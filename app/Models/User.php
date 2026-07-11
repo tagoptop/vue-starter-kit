@@ -55,6 +55,21 @@ class User extends Authenticatable
         return $this->hasMany(Order::class, 'customer_id');
     }
 
+    public function adminConversations(): HasMany
+    {
+        return $this->hasMany(Conversation::class, 'admin_id');
+    }
+
+    public function customerConversations(): HasMany
+    {
+        return $this->hasMany(Conversation::class, 'customer_id');
+    }
+
+    public function sentMessages(): HasMany
+    {
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+
     public function hasRole(string $role): bool
     {
         return $this->role === $role;

@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\ConversationController;
 use App\Http\Controllers\ConstructionDashboardController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\MessageController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ReportController;
@@ -39,6 +41,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('reports/export/excel', [ReportController::class, 'exportExcel'])->name('reports.export.excel');
         Route::get('reports/export/pdf', [ReportController::class, 'exportPdf'])->name('reports.export.pdf');
+        
+        // Messenger routes (admin/staff only)
+        Route::resource('conversations', ConversationController::class)->only(['index', 'create', 'store', 'show']);
+        Route::post('conversations/{conversation}/messages', [MessageController::class, 'store'])->name('messages.store');
+        Route::delete('messages/{message}', [MessageController::class, 'destroy'])->name('messages.destroy');
     });
 
     Route::get('orders/{order}', [OrderController::class, 'show'])->whereNumber('order')->name('orders.show');

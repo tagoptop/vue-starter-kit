@@ -25,6 +25,7 @@
                     <li class="nav-item"><a class="nav-link" href="{{ route('categories.index') }}">Categories</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ route('suppliers.index') }}">Suppliers</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ route('inventory.index') }}">Inventory</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ route('conversations.index') }}">Messages</a></li>
                 @endif
                 <li class="nav-item"><a class="nav-link" href="{{ route('orders.index') }}">Orders</a></li>
                 @if(auth()->check() && auth()->user()->role === 'customer')
