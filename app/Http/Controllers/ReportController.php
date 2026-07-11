@@ -14,28 +14,61 @@ class ReportController extends Controller
     public function index(Request $request): View
     {
         $range = $request->get('range', 'daily');
-        [$start, $end] = $this->resolveRange($range);
+        $customFrom = $request->get('from');
+        $customTo = $request->get('to');
+        $status = $request->get('status', 'all');
 
-        $orders = Order::with('customer')
-            ->whereBetween('created_at', [$start, $end])
-            ->whereIn('status', ['approved', 'delivered'])
-            ->latest()
-            ->get();
+        // Use custom dates if provided, otherwise use predefined ranges
+        if ($customFrom && $customTo) {
+            $start = Carbon::createFromFormat('Y-m-d', $customFrom)->startOfDay();
+            $end = Carbon::createFromFormat('Y-m-d', $customTo)->endOfDay();
+        } else {
+            [$start, $end] = $this->resolveRange($range);
+        }
+
+        $query = Order::with('customer')
+            ->whereBetween('created_at', [$start, $end]);
+
+        // Apply status filter if specified
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        } else {
+            $query->whereIn('status', ['approved', 'delivered']);
+        }
+
+        $orders = $query->latest()->get();
 
         $salesTotal = $orders->sum('total_amount');
 
-        return view('reports.index', compact('orders', 'salesTotal', 'range', 'start', 'end'));
+        return view('reports.index', compact('orders', 'salesTotal', 'range', 'start', 'end', 'customFrom', 'customTo', 'status'));
     }
 
     public function exportExcel(Request $request)
     {
         $range = $request->get('range', 'daily');
-        [$start, $end] = $this->resolveRange($range);
+        $customFrom = $request->get('from');
+        $customTo = $request->get('to');
+        $status = $request->get('status', 'all');
 
-        $orders = Order::with('customer')
-            ->whereBetween('created_at', [$start, $end])
-            ->whereIn('status', ['approved', 'delivered'])
-            ->get();
+        // Use custom dates if provided, otherwise use predefined ranges
+        if ($customFrom && $customTo) {
+            $start = Carbon::createFromFormat('Y-m-d', $customFrom)->startOfDay();
+            $end = Carbon::createFromFormat('Y-m-d', $customTo)->endOfDay();
+        } else {
+            [$start, $end] = $this->resolveRange($range);
+        }
+
+        $query = Order::with('customer')
+            ->whereBetween('created_at', [$start, $end]);
+
+        // Apply status filter if specified
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        } else {
+            $query->whereIn('status', ['approved', 'delivered']);
+        }
+
+        $orders = $query->get();
 
         $csv = "Order Number,Customer,Status,Total,Date\n";
 
@@ -58,13 +91,29 @@ class ReportController extends Controller
     public function exportPdf(Request $request)
     {
         $range = $request->get('range', 'daily');
-        [$start, $end] = $this->resolveRange($range);
+        $customFrom = $request->get('from');
+        $customTo = $request->get('to');
+        $status = $request->get('status', 'all');
 
-        $orders = Order::with('customer')
-            ->whereBetween('created_at', [$start, $end])
-            ->whereIn('status', ['approved', 'delivered'])
-            ->latest()
-            ->get();
+        // Use custom dates if provided, otherwise use predefined ranges
+        if ($customFrom && $customTo) {
+            $start = Carbon::createFromFormat('Y-m-d', $customFrom)->startOfDay();
+            $end = Carbon::createFromFormat('Y-m-d', $customTo)->endOfDay();
+        } else {
+            [$start, $end] = $this->resolveRange($range);
+        }
+
+        $query = Order::with('customer')
+            ->whereBetween('created_at', [$start, $end]);
+
+        // Apply status filter if specified
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        } else {
+            $query->whereIn('status', ['approved', 'delivered']);
+        }
+
+        $orders = $query->latest()->get();
 
         $salesTotal = $orders->sum('total_amount');
 

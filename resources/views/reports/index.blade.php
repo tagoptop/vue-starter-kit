@@ -11,7 +11,7 @@
 
 <form method="GET" action="{{ route('reports.index') }}" class="mb-3">
     <div class="row g-2 align-items-end">
-        <div class="col-md-3">
+        <div class="col-md-2">
             <label class="form-label">Range</label>
             <select name="range" class="form-select">
                 <option value="daily" @selected($range === 'daily')>Daily</option>
@@ -20,8 +20,30 @@
             </select>
         </div>
         <div class="col-md-2">
-            <button class="btn btn-primary">Apply</button>
+            <label class="form-label">From Date</label>
+            <input type="date" name="from" class="form-control" value="{{ $customFrom ?? '' }}">
         </div>
+        <div class="col-md-2">
+            <label class="form-label">To Date</label>
+            <input type="date" name="to" class="form-control" value="{{ $customTo ?? '' }}">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select">
+                <option value="all" @selected($status === 'all')>All</option>
+                <option value="pending" @selected($status === 'pending')>Pending</option>
+                <option value="approved" @selected($status === 'approved')>Approved</option>
+                <option value="delivered" @selected($status === 'delivered')>Delivered</option>
+            </select>
+        </div>
+        <div class="col-md-1">
+            <button class="btn btn-primary w-100">Apply</button>
+        </div>
+        @if($customFrom || $customTo || $status !== 'all')
+            <div class="col-md-1">
+                <a href="{{ route('reports.index') }}" class="btn btn-secondary w-100">Clear</a>
+            </div>
+        @endif
     </div>
 </form>
 

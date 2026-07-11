@@ -10,7 +10,10 @@
 <body class="bg-light">
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="{{ route('dashboard') }}">CSMS</a>
+        <a class="navbar-brand d-flex align-items-center gap-2" href="{{ route('dashboard') }}">
+            <img src="{{ config('branding.logo_url', asset('logo.svg')) }}" alt="CSMS Logo" height="40" class="d-inline-block">
+            <span class="fw-bold">{{ config('branding.company_name', 'Construction Supply') }}</span>
+        </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
         </button>

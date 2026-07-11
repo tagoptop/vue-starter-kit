@@ -15,10 +15,14 @@ export default function AuthSimpleLayout({ children, title, description }: AuthL
                 <div className="flex flex-col gap-8">
                     <div className="flex flex-col items-center gap-4">
                         <Link href={route('home')} className="flex flex-col items-center gap-2 font-medium">
-                            <div className="mb-1 flex h-9 w-9 items-center justify-center rounded-md">
-                                <AppLogoIcon className="size-9 fill-current text-[var(--foreground)] dark:text-white" />
+                            <div className="mb-1 flex h-12 w-12 items-center justify-center rounded-md">
+                                <img src="/logo.svg" alt="CSMS Logo" className="size-10" />
                             </div>
                             <span className="sr-only">{title}</span>
+                            <div className="text-center">
+                                <div className="font-bold text-base">Construction Supply</div>
+                                <div className="text-xs text-muted-foreground">Management System</div>
+                            </div>
                         </Link>
 
                         <div className="space-y-2 text-center">
