@@ -4,16 +4,16 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\View\View;
 use Illuminate\Support\Facades\Storage;
-use Inertia\Inertia;
-use Inertia\Response;
 
 class CompanyBrandingController extends Controller
 {
     /**
      * Show the company branding settings page (admin only).
      */
-    public function edit(Request $request): Response
+    public function edit(Request $request): View
     {
         if ($request->user()->role !== 'admin') {
             abort(403, 'Unauthorized');
@@ -22,7 +22,7 @@ class CompanyBrandingController extends Controller
         $logoUrl = config('branding.logo_url', '/logo.svg');
         $companyName = config('branding.company_name', 'Construction Supply');
 
-        return Inertia::render('settings/branding', [
+        return view('settings.branding', [
             'logoUrl' => $logoUrl,
             'companyName' => $companyName,
         ]);
@@ -31,7 +31,7 @@ class CompanyBrandingController extends Controller
     /**
      * Update the company branding settings.
      */
-    public function update(Request $request)
+    public function update(Request $request): RedirectResponse
     {
         if ($request->user()->role !== 'admin') {
             abort(403, 'Unauthorized');
@@ -65,13 +65,13 @@ class CompanyBrandingController extends Controller
         // Store settings in config file
         $this->saveBrandingConfig($companyName, $logoUrl);
 
-        return redirect()->route('branding.edit')->with('status', 'Company branding updated successfully!');
+        return redirect()->route('settings.branding')->with('status', 'Company branding updated successfully!');
     }
 
     /**
      * Reset to default branding.
      */
-    public function reset(Request $request)
+    public function reset(Request $request): RedirectResponse
     {
         if ($request->user()->role !== 'admin') {
             abort(403, 'Unauthorized');
@@ -88,7 +88,7 @@ class CompanyBrandingController extends Controller
 
         $this->saveBrandingConfig('Construction Supply', '/logo.svg');
 
-        return redirect()->route('branding.edit')->with('status', 'Company branding reset to defaults!');
+        return redirect()->route('settings.branding')->with('status', 'Company branding reset to defaults!');
     }
 
     /**

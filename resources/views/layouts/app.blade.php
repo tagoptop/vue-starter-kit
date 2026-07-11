@@ -45,7 +45,7 @@
                     <li class="nav-item"><a class="nav-link" href="{{ route('users.index') }}">Users</a></li>
                 @endif
                 @if(auth()->check())
-                    <li class="nav-item"><a class="nav-link" href="{{ route('profile.edit') }}">Settings</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ route('settings.profile') }}">Settings</a></li>
                 @endif
             </ul>
             <div class="d-flex align-items-center gap-2">

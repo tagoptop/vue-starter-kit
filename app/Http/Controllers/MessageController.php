@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Conversation;
 use App\Models\Message;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
 
 class MessageController extends Controller
@@ -12,7 +13,7 @@ class MessageController extends Controller
     /**
      * Send a new message.
      */
-    public function store(Request $request, Conversation $conversation)
+    public function store(Request $request, Conversation $conversation): RedirectResponse
     {
         // Check authorization
         if ($conversation->admin_id !== $request->user()->id && $conversation->customer_id !== $request->user()->id) {
@@ -25,16 +26,16 @@ class MessageController extends Controller
         }
 
         $request->validate([
-            'body' => ['required_without:file', 'string', 'max:5000'],
-            'file' => ['nullable', 'file', 'max:10240'], // 10MB max
+            'body' => ['required_without:attachment', 'string', 'max:5000'],
+            'attachment' => ['nullable', 'file', 'max:10240'], // 10MB max
         ]);
 
         $filePath = null;
         $fileName = null;
 
         // Handle file upload if provided
-        if ($request->hasFile('file')) {
-            $file = $request->file('file');
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
             $fileName = $file->getClientOriginalName();
             $storagePath = $file->store('messages/' . $conversation->id, 'public');
             $filePath = '/storage/' . $storagePath;

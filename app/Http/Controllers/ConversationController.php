@@ -5,14 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Conversation;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
+use Illuminate\View\View;
+use Illuminate\Http\RedirectResponse;
 
 class ConversationController extends Controller
 {
     /**
      * Display a listing of conversations.
      */
-    public function index(Request $request)
+    public function index(Request $request): View
     {
         // Admin/Staff can only see conversations they're part of
         if (!in_array($request->user()->role, ['admin', 'staff'])) {
@@ -25,7 +26,7 @@ class ConversationController extends Controller
             ->orderByDesc('last_message_at')
             ->paginate(20);
 
-        return Inertia::render('messenger/index', [
+        return view('messenger.index', [
             'conversations' => $conversations,
         ]);
     }
@@ -33,7 +34,7 @@ class ConversationController extends Controller
     /**
      * Show a specific conversation.
      */
-    public function show(Request $request, Conversation $conversation)
+    public function show(Request $request, Conversation $conversation): View
     {
         // Check authorization
         if ($conversation->admin_id !== $request->user()->id && $conversation->customer_id !== $request->user()->id) {
@@ -48,7 +49,7 @@ class ConversationController extends Controller
         $messages = $conversation->messages()->with('sender')->orderBy('created_at')->get();
         $otherUser = $conversation->admin_id === $request->user()->id ? $conversation->customer : $conversation->admin;
 
-        return Inertia::render('messenger/show', [
+        return view('messenger.show', [
             'conversation' => $conversation,
             'messages' => $messages,
             'otherUser' => $otherUser,
@@ -58,7 +59,7 @@ class ConversationController extends Controller
     /**
      * Start a new conversation with a customer.
      */
-    public function create(Request $request)
+    public function create(Request $request): View
     {
         if (!in_array($request->user()->role, ['admin', 'staff'])) {
             abort(403, 'Unauthorized');
@@ -66,7 +67,7 @@ class ConversationController extends Controller
 
         $customers = User::where('role', 'customer')->get(['id', 'name', 'email']);
 
-        return Inertia::render('messenger/create', [
+        return view('messenger.create', [
             'customers' => $customers,
         ]);
     }
@@ -74,7 +75,7 @@ class ConversationController extends Controller
     /**
      * Store a new conversation.
      */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         if (!in_array($request->user()->role, ['admin', 'staff'])) {
             abort(403, 'Unauthorized');
