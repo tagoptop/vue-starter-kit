@@ -43,6 +43,9 @@
                 @if(auth()->check() && auth()->user()->role === 'admin')
                     <li class="nav-item"><a class="nav-link" href="{{ route('users.index') }}">Users</a></li>
                 @endif
+                @if(auth()->check())
+                    <li class="nav-item"><a class="nav-link" href="{{ route('profile.edit') }}">Settings</a></li>
+                @endif
             </ul>
             <div class="d-flex align-items-center gap-2">
                 <span class="text-white small">{{ auth()->user()->name ?? '' }} ({{ auth()->user()->role ?? '' }})</span>
