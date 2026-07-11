@@ -47,6 +47,60 @@
             border-color: #667eea;
             box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
         }
+        .btn {
+            font-weight: 500;
+            padding: 0.6rem 1.2rem;
+        }
+        /* Mobile responsiveness */
+        @media (max-width: 576px) {
+            body {
+                padding: 1rem;
+            }
+            .auth-container {
+                max-width: 100%;
+                border-radius: 8px;
+            }
+            .auth-header {
+                padding: 1.5rem;
+            }
+            .auth-header h1 {
+                font-size: 1.25rem;
+            }
+            .auth-header p {
+                font-size: 0.875rem;
+            }
+            .auth-body {
+                padding: 1.5rem;
+            }
+            .form-label {
+                font-size: 0.9rem;
+            }
+            .form-control {
+                font-size: 1rem;
+                padding: 0.5rem 0.75rem;
+            }
+            .btn {
+                font-size: 0.9rem;
+                padding: 0.5rem 1rem;
+            }
+            .text-center {
+                font-size: 0.8rem;
+            }
+        }
+        @media (max-width: 375px) {
+            .auth-header {
+                padding: 1rem;
+            }
+            .auth-body {
+                padding: 1rem;
+            }
+            .auth-header h1 {
+                font-size: 1.1rem;
+            }
+            .mb-3 {
+                margin-bottom: 0.75rem !important;
+            }
+        }
     </style>
 </head>
 <body>
