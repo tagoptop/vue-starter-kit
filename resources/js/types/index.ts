@@ -23,6 +23,10 @@ export interface NavItem {
 
 export interface SharedData {
     name: string;
+    branding?: {
+        companyName: string;
+        logoUrl: string;
+    };
     quote: { message: string; author: string };
     auth: Auth;
     assistantCatalog?: AssistantCategory[];

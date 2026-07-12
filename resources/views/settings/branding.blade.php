@@ -7,8 +7,12 @@
     </div>
     <div class="card-body">
         @if ($status = session('status'))
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                {{ $status }}
+            @php
+                $statusType = session('status_type', 'saved');
+                $isReset = $statusType === 'reset';
+            @endphp
+            <div class="alert {{ $isReset ? 'alert-warning' : 'alert-success' }} alert-dismissible fade show" role="alert">
+                <strong>{{ $isReset ? 'Reset:' : 'Saved:' }}</strong> {{ $status }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         @endif
@@ -25,7 +29,7 @@
             </div>
         @endif
 
-        <form method="post" action="{{ route('branding.update') }}" enctype="multipart/form-data">
+        <form id="branding-update-form" method="post" action="{{ route('branding.update') }}" enctype="multipart/form-data">
             @csrf
 
             <div class="mb-4">
@@ -58,15 +62,17 @@
                 </div>
             </div>
 
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary">Save Changes</button>
-                <form method="post" action="{{ route('branding.reset') }}" style="display: inline;" onsubmit="return confirm('Reset company branding to defaults?');">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-secondary">Reset to Defaults</button>
-                </form>
-            </div>
         </form>
+
+        <div class="d-flex gap-2 mt-3">
+            <button type="submit" form="branding-update-form" class="btn btn-primary">Save Changes</button>
+
+            <form method="post" action="{{ route('branding.reset') }}" style="display: inline;" onsubmit="return confirm('Reset company branding to defaults?');">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-secondary">Reset to Defaults</button>
+            </form>
+        </div>
     </div>
 </div>
 

@@ -32,7 +32,10 @@
         @endif
         <p class="mb-1"><strong>Status:</strong> {{ ucfirst($order->status) }}</p>
         <p class="mb-1"><strong>Total:</strong> ₱{{ number_format($order->total_amount, 2) }}</p>
-        <p class="mb-0"><strong>Notes:</strong> {{ $order->notes }}</p>
+        <p class="mb-1"><strong>Customer Notes:</strong> {{ $order->notes ?: 'No customer notes provided.' }}</p>
+        @if($order->delivery_notes)
+            <p class="mb-0"><strong>Delivery Notes:</strong> {{ $order->delivery_notes }}</p>
+        @endif
     </div>
 </div>
 

@@ -1,6 +1,6 @@
-import AppLogoIcon from '@/components/app-logo-icon';
+import { type SharedData } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 
 export default function AuthCardLayout({
     children,
@@ -12,15 +12,19 @@ export default function AuthCardLayout({
     title?: string;
     description?: string;
 }) {
+    const { branding } = usePage<SharedData>().props;
+    const logoUrl = branding?.logoUrl ?? '/logo.svg';
+    const companyName = branding?.companyName ?? 'Construction Supply';
+
     return (
         <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
             <div className="flex w-full max-w-md flex-col gap-6">
                 <Link href={route('home')} className="flex items-center gap-2 self-center font-medium">
                     <div className="flex h-12 w-12 items-center justify-center">
-                        <img src="/logo.svg" alt="CSMS Logo" className="size-10" />
+                        <img src={logoUrl} alt={`${companyName} logo`} className="size-10 object-contain" />
                     </div>
                     <div className="text-sm">
-                        <div className="font-bold">Construction Supply</div>
+                        <div className="font-bold">{companyName}</div>
                         <div className="text-xs text-muted-foreground">Management System</div>
                     </div>
                 </Link>

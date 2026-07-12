@@ -9,7 +9,7 @@
         </div>
         <div class="col-auto">
             <a href="{{ route('conversations.create') }}" class="btn btn-primary">
-                <i class="bi bi-pencil-square"></i> New Message
+                <i class="bi bi-pencil-square"></i> {{ auth()->user()->role === 'customer' ? 'Contact Support' : 'New Message' }}
             </a>
         </div>
     </div>
@@ -17,8 +17,8 @@
     @if($conversations->isEmpty())
         <div class="card">
             <div class="card-body text-center py-5">
-                <p class="text-muted">No conversations yet. Start a new conversation to message a customer.</p>
-                <a href="{{ route('conversations.create') }}" class="btn btn-primary">Start Conversation</a>
+                <p class="text-muted">No conversations yet. {{ auth()->user()->role === 'customer' ? 'Start a support chat when you need help.' : 'Start a new conversation to begin messaging.' }}</p>
+                <a href="{{ route('conversations.create') }}" class="btn btn-primary">{{ auth()->user()->role === 'customer' ? 'Contact Support' : 'Start Conversation' }}</a>
             </div>
         </div>
     @else
@@ -41,7 +41,7 @@
                                 @endif
                             </p>
                             <small class="text-muted">
-                                With {{ $conversation->customer->name }}
+                                With {{ auth()->id() === $conversation->customer_id ? $conversation->admin->name : $conversation->customer->name }}
                             </small>
                         </div>
                         <div class="text-end">

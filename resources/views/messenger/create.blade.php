@@ -24,20 +24,33 @@
                     <form method="post" action="{{ route('conversations.store') }}">
                         @csrf
 
-                        <div class="mb-3">
-                            <label for="customer_id" class="form-label">Select Customer</label>
-                            <select id="customer_id" name="customer_id" class="form-select @error('customer_id') is-invalid @enderror" required>
-                                <option value="">-- Choose a customer --</option>
-                                @foreach($customers as $customer)
-                                    <option value="{{ $customer->id }}" {{ old('customer_id') == $customer->id ? 'selected' : '' }}>
-                                        {{ $customer->name }} ({{ $customer->email }})
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('customer_id')
-                                <span class="invalid-feedback">{{ $message }}</span>
-                            @enderror
-                        </div>
+                        @if($isCustomer)
+                            @if($defaultSupportContact)
+                                <input type="hidden" name="participant_id" value="{{ $defaultSupportContact->id }}">
+                                <div class="mb-3 border rounded p-3 bg-light-subtle">
+                                    <div class="fw-semibold">Default Support Contact</div>
+                                    <div>{{ $defaultSupportContact->name }}</div>
+                                    <div class="small text-muted">{{ $defaultSupportContact->email }} · {{ ucfirst($defaultSupportContact->role) }}</div>
+                                </div>
+                            @else
+                                <div class="alert alert-warning mb-3">No support contact is available right now.</div>
+                            @endif
+                        @else
+                            <div class="mb-3">
+                                <label for="participant_id" class="form-label">Select Customer</label>
+                                <select id="participant_id" name="participant_id" class="form-select @error('participant_id') is-invalid @enderror" required>
+                                    <option value="">-- Choose a customer --</option>
+                                    @foreach($participants as $participant)
+                                        <option value="{{ $participant->id }}" {{ old('participant_id') == $participant->id ? 'selected' : '' }}>
+                                            {{ $participant->name }} ({{ $participant->email }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('participant_id')
+                                    <span class="invalid-feedback">{{ $message }}</span>
+                                @enderror
+                            </div>
+                        @endif
 
                         <div class="mb-3">
                             <label for="subject" class="form-label">Subject (Optional)</label>
@@ -48,7 +61,7 @@
                         </div>
 
                         <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">Start Conversation</button>
+                            <button type="submit" class="btn btn-primary" @disabled($isCustomer && ! $defaultSupportContact)>{{ $isCustomer ? 'Contact Support' : 'Start Conversation' }}</button>
                             <a href="{{ route('conversations.index') }}" class="btn btn-secondary">Cancel</a>
                         </div>
                     </form>

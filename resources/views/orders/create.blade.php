@@ -232,8 +232,8 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Order Notes</label>
-                            <textarea name="notes" class="form-control" rows="3" placeholder="Delivery notes, requests, or project reference">{{ old('notes') }}</textarea>
+                            <label class="form-label">Customer Notes</label>
+                            <textarea name="notes" class="form-control" rows="3" placeholder="Requests, site reminders, or project reference">{{ old('notes') }}</textarea>
                         </div>
                         <div class="d-grid">
                             <button class="btn btn-success btn-lg fw-semibold" type="submit">Place Order</button>

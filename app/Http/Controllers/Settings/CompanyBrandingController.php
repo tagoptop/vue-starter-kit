@@ -19,7 +19,7 @@ class CompanyBrandingController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        $logoUrl = config('branding.logo_url', '/logo.svg');
+        $logoUrl = $this->getVersionedLogoUrl();
         $companyName = config('branding.company_name', 'Construction Supply');
 
         return view('settings.branding', [
@@ -39,7 +39,7 @@ class CompanyBrandingController extends Controller
 
         $request->validate([
             'company_name' => 'required|string|max:255',
-            'logo' => 'nullable|image|mimes:svg,png,jpg,jpeg,gif,webp|max:2048',
+            'logo' => 'nullable|file|mimes:svg,png,jpg,jpeg,gif,webp|max:2048',
         ]);
 
         $companyName = $request->input('company_name');
@@ -65,7 +65,9 @@ class CompanyBrandingController extends Controller
         // Store settings in config file
         $this->saveBrandingConfig($companyName, $logoUrl);
 
-        return redirect()->route('settings.branding')->with('status', 'Company branding updated successfully!');
+        return redirect()->route('settings.branding')
+            ->with('status', 'Company branding updated successfully!')
+            ->with('status_type', 'saved');
     }
 
     /**
@@ -88,7 +90,9 @@ class CompanyBrandingController extends Controller
 
         $this->saveBrandingConfig('Construction Supply', '/logo.svg');
 
-        return redirect()->route('settings.branding')->with('status', 'Company branding reset to defaults!');
+        return redirect()->route('settings.branding')
+            ->with('status', 'Company branding reset to defaults!')
+            ->with('status_type', 'reset');
     }
 
     /**
@@ -103,5 +107,41 @@ class CompanyBrandingController extends Controller
         ];
 
         file_put_contents($configPath, '<?php return ' . var_export($config, true) . ';');
+
+        // Keep runtime config in sync for the current request cycle.
+        config([
+            'branding.company_name' => $companyName,
+            'branding.logo_url' => $logoUrl,
+        ]);
+
+        // If config was cached, remove stale cache so new branding is loaded.
+        $cachedConfigPath = base_path('bootstrap/cache/config.php');
+        if (file_exists($cachedConfigPath)) {
+            @unlink($cachedConfigPath);
+        }
+    }
+
+    /**
+     * Get a logo URL with a cache-busting version query when possible.
+     */
+    private function getVersionedLogoUrl(): string
+    {
+        $logoUrl = config('branding.logo_url', '/logo.svg');
+
+        if (str_starts_with($logoUrl, '/storage/')) {
+            $storagePath = storage_path('app/public/' . str_replace('/storage/', '', $logoUrl));
+            if (file_exists($storagePath)) {
+                return $logoUrl . '?v=' . filemtime($storagePath);
+            }
+        }
+
+        if ($logoUrl === '/logo.svg') {
+            $defaultLogoPath = public_path('logo.svg');
+            if (file_exists($defaultLogoPath)) {
+                return $logoUrl . '?v=' . filemtime($defaultLogoPath);
+            }
+        }
+
+        return $logoUrl;
     }
 }

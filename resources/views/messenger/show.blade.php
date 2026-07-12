@@ -9,7 +9,7 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <div>
                         <h4 class="mb-1">{{ $conversation->subject }}</h4>
-                        <small class="text-muted">With {{ $conversation->customer->name }}</small>
+                        <small class="text-muted">With {{ $otherUser->name }}</small>
                     </div>
                     <a href="{{ route('conversations.index') }}" class="btn btn-sm btn-secondary">Back</a>
                 </div>
@@ -32,7 +32,7 @@
                                         <p class="mb-0">{{ $message->body }}</p>
                                         @if($message->file_path)
                                             <div class="mt-2">
-                                                <a href="{{ asset('storage/' . $message->file_path) }}" class="btn btn-sm btn-outline-primary" download="{{ $message->file_name }}">
+                                                <a href="{{ $message->file_path }}" class="btn btn-sm btn-outline-primary" download="{{ $message->file_name }}">
                                                     <i class="bi bi-download"></i> {{ $message->file_name }}
                                                 </a>
                                             </div>

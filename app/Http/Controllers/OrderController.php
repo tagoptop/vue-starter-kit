@@ -9,10 +9,52 @@ use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class OrderController extends Controller
 {
+    public function deliveryMonitoring(Request $request): View
+    {
+        $status = $request->input('status');
+        $search = trim((string) $request->input('search', ''));
+
+        $baseQuery = Order::query()
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($orderQuery) use ($search) {
+                    $orderQuery
+                        ->where('order_number', 'like', "%{$search}%")
+                        ->orWhere('delivery_address', 'like', "%{$search}%")
+                        ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                            $customerQuery->where('name', 'like', "%{$search}%");
+                        });
+                });
+            });
+
+        $statusCounts = (clone $baseQuery)
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
+        $orders = (clone $baseQuery)
+            ->with('customer')
+            ->withCount('items')
+            ->when(in_array($status, ['pending', 'approved', 'delivered'], true), function ($query) use ($status) {
+                $query->where('status', $status);
+            })
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        $summary = [
+            'pending' => (int) ($statusCounts['pending'] ?? 0),
+            'approved' => (int) ($statusCounts['approved'] ?? 0),
+            'delivered' => (int) ($statusCounts['delivered'] ?? 0),
+        ];
+
+        return view('deliveries.index', compact('orders', 'status', 'search', 'summary'));
+    }
+
     public function index(Request $request): View
     {
         $orders = Order::with(['customer', 'items.product'])
@@ -207,11 +249,45 @@ class OrderController extends Controller
     {
         $validated = $request->validate([
             'status' => ['required', 'in:pending,approved,delivered'],
+            'driver_name' => ['nullable', 'string', 'max:255'],
+            'driver_phone' => ['nullable', 'string', 'max:30'],
+            'delivery_notes' => ['nullable', 'string'],
+            'proof_of_delivery' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:4096'],
         ]);
 
-        $order->update(['status' => $validated['status']]);
+        $updates = [
+            'status' => $validated['status'],
+            'driver_name' => $validated['driver_name'] ?? null,
+            'driver_phone' => $validated['driver_phone'] ?? null,
+        ];
 
-        return back()->with('success', 'Order status updated.');
+        if ($request->has('delivery_notes')) {
+            $updates['delivery_notes'] = $validated['delivery_notes'];
+        }
+
+        if ($validated['status'] === 'delivered') {
+            $updates['delivered_at'] = $order->delivered_at ?? now();
+        } else {
+            $updates['delivered_at'] = null;
+        }
+
+        if ($request->hasFile('proof_of_delivery')) {
+            $path = $request->file('proof_of_delivery')->store('proof-of-delivery', 'public');
+            $updates['proof_of_delivery_path'] = '/storage/' . $path;
+
+            if ($order->proof_of_delivery_path && str_starts_with($order->proof_of_delivery_path, '/storage/')) {
+                $oldPath = str_replace('/storage/', '', $order->proof_of_delivery_path);
+                if (Storage::disk('public')->exists($oldPath)) {
+                    Storage::disk('public')->delete($oldPath);
+                }
+            }
+        }
+
+        $order->update($updates);
+
+        $hasDeliveryUpdate = $request->hasAny(['delivery_notes', 'driver_name', 'driver_phone']) || $request->hasFile('proof_of_delivery');
+
+        return back()->with('success', $hasDeliveryUpdate ? 'Delivery updated.' : 'Order status updated.');
     }
 
     private function getCart(): array

@@ -1,4 +1,3 @@
-import AppLogoIcon from '@/components/app-logo-icon';
 import { type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 
@@ -9,16 +8,18 @@ interface AuthLayoutProps {
 }
 
 export default function AuthSplitLayout({ children, title, description }: AuthLayoutProps) {
-    const { name, quote } = usePage<SharedData>().props;
+    const { quote, branding } = usePage<SharedData>().props;
+    const logoUrl = branding?.logoUrl ?? '/logo.svg';
+    const companyName = branding?.companyName ?? 'Construction Supply';
 
     return (
         <div className="relative grid h-dvh flex-col items-center justify-center px-8 sm:px-0 lg:max-w-none lg:grid-cols-2 lg:px-0">
             <div className="bg-muted relative hidden h-full flex-col p-10 text-white lg:flex dark:border-r">
                 <div className="absolute inset-0 bg-zinc-900" />
                 <Link href={route('home')} className="relative z-20 flex items-center gap-2 text-lg font-medium">
-                    <img src="/logo.svg" alt="CSMS Logo" className="size-8" />
+                    <img src={logoUrl} alt={`${companyName} logo`} className="size-8 object-contain" />
                     <div>
-                        <div className="font-bold">Construction Supply</div>
+                        <div className="font-bold">{companyName}</div>
                         <div className="text-xs">Management System</div>
                     </div>
                 </Link>
@@ -34,9 +35,9 @@ export default function AuthSplitLayout({ children, title, description }: AuthLa
             <div className="w-full lg:p-8">
                 <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
                     <Link href={route('home')} className="relative z-20 flex items-center justify-center gap-2 lg:hidden">
-                        <img src="/logo.svg" alt="CSMS Logo" className="h-10 sm:h-12" />
+                        <img src={logoUrl} alt={`${companyName} logo`} className="h-10 object-contain sm:h-12" />
                         <div>
-                            <div className="font-bold text-sm sm:text-base">CSMS</div>
+                            <div className="font-bold text-sm sm:text-base">{companyName}</div>
                         </div>
                     </Link>
                     <div className="flex flex-col items-start gap-2 text-left sm:items-center sm:text-center">

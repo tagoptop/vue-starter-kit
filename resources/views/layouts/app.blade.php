@@ -11,7 +11,21 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
         <a class="navbar-brand d-flex align-items-center gap-2" href="{{ route('dashboard') }}">
-            <img src="{{ config('branding.logo_url', asset('logo.svg')) }}" alt="CSMS Logo" height="40" class="d-inline-block">
+            @php
+                $brandingLogoUrl = config('branding.logo_url', '/logo.svg');
+                if (str_starts_with($brandingLogoUrl, '/storage/')) {
+                    $storageLogoPath = storage_path('app/public/' . str_replace('/storage/', '', $brandingLogoUrl));
+                    if (file_exists($storageLogoPath)) {
+                        $brandingLogoUrl .= '?v=' . filemtime($storageLogoPath);
+                    }
+                } elseif ($brandingLogoUrl === '/logo.svg') {
+                    $defaultLogoPath = public_path('logo.svg');
+                    if (file_exists($defaultLogoPath)) {
+                        $brandingLogoUrl .= '?v=' . filemtime($defaultLogoPath);
+                    }
+                }
+            @endphp
+            <img src="{{ $brandingLogoUrl }}" alt="CSMS Logo" height="40" class="d-inline-block">
             <span class="fw-bold">{{ config('branding.company_name', 'Construction Supply') }}</span>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -25,6 +39,9 @@
                     <li class="nav-item"><a class="nav-link" href="{{ route('categories.index') }}">Categories</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ route('suppliers.index') }}">Suppliers</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ route('inventory.index') }}">Inventory</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ route('deliveries.index') }}">Deliveries</a></li>
+                @endif
+                @if(auth()->check())
                     <li class="nav-item"><a class="nav-link" href="{{ route('conversations.index') }}">Messages</a></li>
                 @endif
                 <li class="nav-item"><a class="nav-link" href="{{ route('orders.index') }}">Orders</a></li>

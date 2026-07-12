@@ -15,11 +15,6 @@ class ConversationController extends Controller
      */
     public function index(Request $request): View
     {
-        // Admin/Staff can only see conversations they're part of
-        if (!in_array($request->user()->role, ['admin', 'staff'])) {
-            abort(403, 'Unauthorized');
-        }
-
         $conversations = Conversation::where('admin_id', $request->user()->id)
             ->orWhere('customer_id', $request->user()->id)
             ->with(['admin', 'customer', 'latestMessage.sender'])
@@ -41,11 +36,6 @@ class ConversationController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        // Only admin/staff can initiate conversations
-        if ($request->user()->role === 'customer' && $conversation->customer_id === $request->user()->id) {
-            abort(403, 'Customers cannot view conversations');
-        }
-
         $messages = $conversation->messages()->with('sender')->orderBy('created_at')->get();
         $otherUser = $conversation->admin_id === $request->user()->id ? $conversation->customer : $conversation->admin;
 
@@ -61,14 +51,19 @@ class ConversationController extends Controller
      */
     public function create(Request $request): View
     {
-        if (!in_array($request->user()->role, ['admin', 'staff'])) {
-            abort(403, 'Unauthorized');
-        }
+        $user = $request->user();
 
-        $customers = User::where('role', 'customer')->get(['id', 'name', 'email']);
+        $isCustomer = $user->role === 'customer';
+        $participants = $isCustomer
+            ? User::whereIn('role', ['admin', 'staff'])->orderByRaw("CASE WHEN role = 'admin' THEN 0 ELSE 1 END")->orderBy('id')->get(['id', 'name', 'email', 'role'])
+            : User::where('role', 'customer')->get(['id', 'name', 'email', 'role']);
+
+        $defaultSupportContact = $isCustomer ? $participants->first() : null;
 
         return view('messenger.create', [
-            'customers' => $customers,
+            'participants' => $participants,
+            'defaultSupportContact' => $defaultSupportContact,
+            'isCustomer' => $isCustomer,
         ]);
     }
 
@@ -77,25 +72,46 @@ class ConversationController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        if (!in_array($request->user()->role, ['admin', 'staff'])) {
-            abort(403, 'Unauthorized');
+        $user = $request->user();
+
+        if ($user->role === 'customer') {
+            $request->validate([
+                'participant_id' => ['nullable', 'exists:users,id'],
+                'subject' => ['nullable', 'string', 'max:255'],
+            ]);
+
+            $participant = $request->filled('participant_id')
+                ? User::findOrFail($request->participant_id)
+                : $this->resolveDefaultSupportContact();
+
+            if (! $participant) {
+                return back()->withErrors(['participant_id' => 'No support contact is available right now.']);
+            }
+
+            if (! in_array($participant->role, ['admin', 'staff'], true)) {
+                abort(403, 'Customers can only message admin or staff users');
+            }
+
+            $adminId = $participant->id;
+            $customerId = $user->id;
+        } else {
+            $request->validate([
+                'participant_id' => ['required', 'exists:users,id'],
+                'subject' => ['nullable', 'string', 'max:255'],
+            ]);
+
+            $participant = User::findOrFail($request->participant_id);
+
+            if ($participant->role !== 'customer') {
+                abort(403, 'Can only message customers');
+            }
+
+            $adminId = $user->id;
+            $customerId = $participant->id;
         }
 
-        $request->validate([
-            'customer_id' => ['required', 'exists:users,id'],
-            'subject' => ['nullable', 'string', 'max:255'],
-        ]);
-
-        $customer = User::findOrFail($request->customer_id);
-
-        // Check if customer exists and is a customer role
-        if ($customer->role !== 'customer') {
-            abort(403, 'Can only message customers');
-        }
-
-        // Check if conversation already exists
-        $existing = Conversation::where('admin_id', $request->user()->id)
-            ->where('customer_id', $request->customer_id)
+        $existing = Conversation::where('admin_id', $adminId)
+            ->where('customer_id', $customerId)
             ->first();
 
         if ($existing) {
@@ -103,11 +119,19 @@ class ConversationController extends Controller
         }
 
         $conversation = Conversation::create([
-            'admin_id' => $request->user()->id,
-            'customer_id' => $request->customer_id,
+            'admin_id' => $adminId,
+            'customer_id' => $customerId,
             'subject' => $request->subject,
         ]);
 
         return redirect()->route('conversations.show', $conversation);
+    }
+
+    private function resolveDefaultSupportContact(): ?User
+    {
+        return User::whereIn('role', ['admin', 'staff'])
+            ->orderByRaw("CASE WHEN role = 'admin' THEN 0 ELSE 1 END")
+            ->orderBy('id')
+            ->first(['id', 'name', 'email', 'role']);
     }
 }

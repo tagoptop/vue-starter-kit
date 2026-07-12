@@ -20,11 +20,6 @@ class MessageController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        // Only admin/staff can message customers
-        if ($request->user()->role === 'customer') {
-            abort(403, 'Customers cannot send messages');
-        }
-
         $request->validate([
             'body' => ['required_without:attachment', 'string', 'max:5000'],
             'attachment' => ['nullable', 'file', 'max:10240'], // 10MB max
@@ -41,7 +36,7 @@ class MessageController extends Controller
             $filePath = '/storage/' . $storagePath;
         }
 
-        $message = Message::create([
+        Message::create([
             'conversation_id' => $conversation->id,
             'sender_id' => $request->user()->id,
             'body' => $request->body ?? '',
