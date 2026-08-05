@@ -19,6 +19,7 @@ class Order extends Model
         'delivery_address',
         'delivery_latitude',
         'delivery_longitude',
+        'scheduled_for',
         'delivery_notes',
         'driver_name',
         'driver_phone',
@@ -32,6 +33,7 @@ class Order extends Model
         return [
             'delivery_latitude' => 'float',
             'delivery_longitude' => 'float',
+            'scheduled_for' => 'date',
             'total_amount' => 'float',
             'delivered_at' => 'datetime',
         ];

@@ -232,6 +232,19 @@
                         </div>
 
                         <div class="mb-3">
+                            <label class="form-label" for="scheduled_for">Requested Delivery Date</label>
+                            <input
+                                type="date"
+                                id="scheduled_for"
+                                name="scheduled_for"
+                                class="form-control"
+                                value="{{ old('scheduled_for') }}"
+                                min="{{ now()->toDateString() }}"
+                            >
+                            <div class="form-text">Optional: this date appears in the delivery calendar for scheduling.</div>
+                        </div>
+
+                        <div class="mb-3">
                             <label class="form-label">Customer Notes</label>
                             <textarea name="notes" class="form-control" rows="3" placeholder="Requests, site reminders, or project reference">{{ old('notes') }}</textarea>
                         </div>

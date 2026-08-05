@@ -31,13 +31,28 @@
             </p>
         @endif
         <p class="mb-1"><strong>Status:</strong> {{ ucfirst($order->status) }}</p>
+        <p class="mb-1"><strong>Scheduled Delivery:</strong> {{ $order->scheduled_for?->format('M d, Y') ?? 'Not scheduled' }}</p>
         <p class="mb-1"><strong>Total:</strong> ₱{{ number_format($order->total_amount, 2) }}</p>
         <p class="mb-1"><strong>Customer Notes:</strong> {{ $order->notes ?: 'No customer notes provided.' }}</p>
-        @if($order->delivery_notes)
-            <p class="mb-0"><strong>Delivery Notes:</strong> {{ $order->delivery_notes }}</p>
+        @if($order->proof_of_delivery_path)
+            <div class="mt-3">
+                <strong>Proof of Delivery:</strong>
+                @php $isPdf = str_ends_with($order->proof_of_delivery_path, '.pdf'); @endphp
+                @if($isPdf)
+                    <div class="mt-2">
+                        <a href="{{ asset($order->proof_of_delivery_path) }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
+                            View PDF Receipt
+                        </a>
+                    </div>
+                @else
+                    <div class="mt-2">
+                        <a href="{{ asset($order->proof_of_delivery_path) }}" target="_blank" rel="noopener noreferrer">
+                            <img src="{{ asset($order->proof_of_delivery_path) }}" alt="Proof of Delivery" class="img-fluid rounded border" style="max-height: 200px; object-fit: contain;">
+                        </a>
+                    </div>
+                @endif
+            </div>
         @endif
-    </div>
-</div>
 
 @if(in_array(auth()->user()->role, ['admin', 'staff']) && $directionsDestination)
     <div class="card shadow-sm mb-3 border-primary-subtle">

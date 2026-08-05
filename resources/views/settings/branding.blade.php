@@ -46,7 +46,7 @@
                 @if($logoUrl && $logoUrl !== '/logo.svg')
                     <div class="mb-3">
                         <p class="text-muted mb-2">Current Logo:</p>
-                        <img src="{{ $logoUrl }}" alt="Company Logo" style="max-width: 200px; max-height: 100px; border: 1px solid #dee2e6; padding: 5px;">
+                        <img src="{{ asset($logoUrl) }}" alt="Company Logo" style="max-width: 200px; max-height: 100px; border: 1px solid #dee2e6; padding: 5px;">
                     </div>
                 @endif
 

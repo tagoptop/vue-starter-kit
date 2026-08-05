@@ -16,6 +16,7 @@
                     <th>Order #</th>
                     <th>Customer</th>
                     <th>Status</th>
+                    <th>Scheduled Delivery</th>
                     <th>Total</th>
                     <th>Date</th>
                     <th width="250">Actions</th>
@@ -32,6 +33,7 @@
                         <td>{{ $order->order_number }}</td>
                         <td>{{ $order->customer?->name }}</td>
                         <td><span class="badge bg-secondary">{{ ucfirst($order->status) }}</span></td>
+                        <td>{{ $order->scheduled_for?->format('M d, Y') ?? 'Not scheduled' }}</td>
                         <td>₱{{ number_format($order->total_amount, 2) }}</td>
                         <td>{{ $order->created_at->format('Y-m-d') }}</td>
                         <td>
@@ -53,7 +55,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="text-center">No orders found.</td></tr>
+                    <tr><td colspan="7" class="text-center">No orders found.</td></tr>
                 @endforelse
             </tbody>
         </table>

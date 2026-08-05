@@ -46,13 +46,40 @@ class OrderController extends Controller
             ->paginate(10)
             ->withQueryString();
 
+        $calendarEvents = (clone $baseQuery)
+            ->with('customer')
+            ->when(in_array($status, ['pending', 'approved', 'delivered'], true), function ($query) use ($status) {
+                $query->where('status', $status);
+            })
+            ->latest()
+            ->limit(300)
+            ->get()
+            ->map(function (Order $order): array {
+                $scheduleDate = $order->scheduled_for?->toDateString()
+                    ?? $order->delivered_at?->toDateString()
+                    ?? $order->created_at->toDateString();
+
+                return [
+                    'id' => (string) $order->id,
+                    'title' => $order->order_number . ' - ' . ($order->customer?->name ?? 'Unknown customer'),
+                    'start' => $scheduleDate,
+                    'url' => route('orders.show', $order),
+                    'extendedProps' => [
+                        'status' => $order->status,
+                        'total' => number_format((float) $order->total_amount, 2),
+                    ],
+                    'classNames' => ['delivery-status-' . $order->status],
+                ];
+            })
+            ->values();
+
         $summary = [
             'pending' => (int) ($statusCounts['pending'] ?? 0),
             'approved' => (int) ($statusCounts['approved'] ?? 0),
             'delivered' => (int) ($statusCounts['delivered'] ?? 0),
         ];
 
-        return view('deliveries.index', compact('orders', 'status', 'search', 'summary'));
+        return view('deliveries.index', compact('orders', 'status', 'search', 'summary', 'calendarEvents'));
     }
 
     public function index(Request $request): View
@@ -86,6 +113,7 @@ class OrderController extends Controller
             'delivery_address' => ['required', 'string', 'max:1000'],
             'delivery_latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:delivery_longitude'],
             'delivery_longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:delivery_latitude'],
+            'scheduled_for' => ['nullable', 'date', 'after_or_equal:today'],
             'notes' => ['nullable', 'string'],
         ]);
 
@@ -104,6 +132,7 @@ class OrderController extends Controller
                     'delivery_address' => $validated['delivery_address'],
                     'delivery_latitude' => $validated['delivery_latitude'] ?? null,
                     'delivery_longitude' => $validated['delivery_longitude'] ?? null,
+                    'scheduled_for' => $validated['scheduled_for'] ?? null,
                     'notes' => $validated['notes'] ?? null,
                 ]);
 
@@ -249,6 +278,7 @@ class OrderController extends Controller
     {
         $validated = $request->validate([
             'status' => ['required', 'in:pending,approved,delivered'],
+            'scheduled_for' => ['nullable', 'date'],
             'driver_name' => ['nullable', 'string', 'max:255'],
             'driver_phone' => ['nullable', 'string', 'max:30'],
             'delivery_notes' => ['nullable', 'string'],
@@ -260,6 +290,10 @@ class OrderController extends Controller
             'driver_name' => $validated['driver_name'] ?? null,
             'driver_phone' => $validated['driver_phone'] ?? null,
         ];
+
+        if ($request->has('scheduled_for')) {
+            $updates['scheduled_for'] = $validated['scheduled_for'] ?? null;
+        }
 
         if ($request->has('delivery_notes')) {
             $updates['delivery_notes'] = $validated['delivery_notes'];
@@ -285,7 +319,7 @@ class OrderController extends Controller
 
         $order->update($updates);
 
-        $hasDeliveryUpdate = $request->hasAny(['delivery_notes', 'driver_name', 'driver_phone']) || $request->hasFile('proof_of_delivery');
+        $hasDeliveryUpdate = $request->hasAny(['delivery_notes', 'driver_name', 'driver_phone', 'scheduled_for']) || $request->hasFile('proof_of_delivery');
 
         return back()->with('success', $hasDeliveryUpdate ? 'Delivery updated.' : 'Order status updated.');
     }

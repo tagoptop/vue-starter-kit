@@ -41,6 +41,19 @@
 
 <div class="card shadow-sm mb-4">
     <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <div>
+                <h5 class="mb-1">Delivery Calendar</h5>
+                <p class="text-muted mb-0">Schedule visibility for pending, approved, and delivered orders.</p>
+            </div>
+            <div class="small text-muted">Showing up to 300 matching deliveries</div>
+        </div>
+        <div id="deliveryCalendar"></div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
         <form method="GET" action="{{ route('deliveries.index') }}" class="row g-3 align-items-end">
             <div class="col-md-5">
                 <label for="search" class="form-label">Search</label>
@@ -95,6 +108,7 @@
                             </div>
                             <div class="text-muted small">Customer: {{ $order->customer?->name ?? 'Unknown' }}</div>
                             <div class="text-muted small">Ordered: {{ $order->created_at->format('M d, Y h:i A') }}</div>
+                            <div class="text-muted small">Scheduled: {{ $order->scheduled_for?->format('M d, Y') ?? 'Not scheduled' }}</div>
                             <div class="text-muted small">Items: {{ $order->items_count }}</div>
                         </div>
                         <div class="text-md-end">
@@ -180,6 +194,17 @@
                                 </div>
 
                                 <div class="mb-3">
+                                    <label for="scheduled-for-{{ $order->id }}" class="form-label">Scheduled Delivery Date</label>
+                                    <input
+                                        type="date"
+                                        id="scheduled-for-{{ $order->id }}"
+                                        name="scheduled_for"
+                                        class="form-control"
+                                        value="{{ old('scheduled_for', $order->scheduled_for?->toDateString()) }}"
+                                    >
+                                </div>
+
+                                <div class="mb-3">
                                     <label for="driver-name-{{ $order->id }}" class="form-label">Assigned Driver</label>
                                     <input
                                         type="text"
@@ -203,17 +228,20 @@
                                     >
                                 </div>
 
-                                <div class="mb-3">
-                                    <label for="proof-{{ $order->id }}" class="form-label">Proof of Delivery</label>
-                                    <input
-                                        type="file"
-                                        id="proof-{{ $order->id }}"
-                                        name="proof_of_delivery"
-                                        class="form-control"
-                                        accept=".jpg,.jpeg,.png,.webp,.pdf"
-                                    >
-                                    <div class="form-text">Upload a photo or PDF receipt after handoff.</div>
-                                </div>
+                                    @if($order->proof_of_delivery_path)
+                                        <div class="mb-2">
+                                            @php $isPdf = str_ends_with($order->proof_of_delivery_path, '.pdf'); @endphp
+                                            @if($isPdf)
+                                                <a href="{{ asset($order->proof_of_delivery_path) }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
+                                                    View Uploaded PDF Receipt
+                                                </a>
+                                            @else
+                                                <a href="{{ asset($order->proof_of_delivery_path) }}" target="_blank" rel="noopener noreferrer">
+                                                    <img src="{{ asset($order->proof_of_delivery_path) }}" alt="Proof of Delivery" class="img-fluid rounded border" style="max-height: 120px; object-fit: contain;">
+                                                </a>
+                                            @endif
+                                        </div>
+                                    @endif
 
                                 <button type="submit" class="btn btn-success w-100">Save Delivery Update</button>
                             </form>
@@ -235,3 +263,66 @@
 
 <div class="mt-4">{{ $orders->links() }}</div>
 @endsection
+
+@push('styles')
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/main.min.css" rel="stylesheet">
+    <style>
+        #deliveryCalendar {
+            min-height: 600px;
+        }
+
+        #deliveryCalendar .fc .fc-daygrid-day-number {
+            color: #1f2937;
+            text-decoration: none;
+        }
+
+        #deliveryCalendar .delivery-status-pending {
+            background-color: #f59e0b;
+            border-color: #d97706;
+        }
+
+        #deliveryCalendar .delivery-status-approved {
+            background-color: #2563eb;
+            border-color: #1d4ed8;
+        }
+
+        #deliveryCalendar .delivery-status-delivered {
+            background-color: #16a34a;
+            border-color: #15803d;
+        }
+    </style>
+@endpush
+
+@push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const calendarElement = document.getElementById('deliveryCalendar');
+
+            if (!calendarElement || typeof FullCalendar === 'undefined') {
+                return;
+            }
+
+            const events = @json($calendarEvents);
+            const calendar = new FullCalendar.Calendar(calendarElement, {
+                initialView: 'dayGridMonth',
+                height: 'auto',
+                events,
+                eventDisplay: 'block',
+                dayMaxEvents: true,
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,listWeek',
+                },
+                eventDidMount(info) {
+                    const total = info.event.extendedProps.total;
+                    const status = info.event.extendedProps.status;
+                    info.el.title = `${info.event.title}\nStatus: ${status}\nTotal: PHP ${total}`;
+                },
+            });
+
+            calendar.render();
+        });
+    </script>
+@endpush

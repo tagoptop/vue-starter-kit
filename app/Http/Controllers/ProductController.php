@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HandlesPublicUploads;
 use App\Models\Category;
 use App\Models\InventoryTransaction;
 use App\Models\Product;
@@ -13,6 +14,8 @@ use Illuminate\View\View;
 
 class ProductController extends Controller
 {
+    use HandlesPublicUploads;
+
     public function index(): View
     {
         $products = Product::with(['category', 'supplier'])->latest()->paginate(10);
@@ -42,7 +45,7 @@ class ProductController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $validated['image_path'] = $request->file('image')->store('products', 'public');
+            $validated['image_path'] = $this->storePublicUpload($request->file('image'), 'products');
         }
 
         $product = Product::create($validated);
@@ -84,10 +87,10 @@ class ProductController extends Controller
 
         if ($request->hasFile('image')) {
             if ($product->image_path) {
-                Storage::disk('public')->delete($product->image_path);
+                $this->deletePublicUpload($product->image_path);
             }
 
-            $validated['image_path'] = $request->file('image')->store('products', 'public');
+            $validated['image_path'] = $this->storePublicUpload($request->file('image'), 'products');
         }
 
         $oldStock = $product->stock_quantity;
@@ -121,7 +124,7 @@ class ProductController extends Controller
     public function destroy(Product $product): RedirectResponse
     {
         if ($product->image_path) {
-            Storage::disk('public')->delete($product->image_path);
+            $this->deletePublicUpload($product->image_path);
         }
 
         $product->delete();

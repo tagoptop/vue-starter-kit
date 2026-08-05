@@ -3,13 +3,16 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\HandlesPublicUploads;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\View\View;
 
 class CompanyBrandingController extends Controller
 {
+    use HandlesPublicUploads;
+
     /**
      * Show the company branding settings page (admin only).
      */
@@ -46,8 +49,7 @@ class CompanyBrandingController extends Controller
 
         // Handle logo upload
         if ($request->hasFile('logo')) {
-            $file = $request->file('logo');
-            $path = $file->store('branding', 'public');
+            $path = $this->storePublicUpload($request->file('logo'), 'branding');
             $logoUrl = '/storage/' . $path;
 
             // Delete old logo if it exists and is not the default
@@ -55,7 +57,7 @@ class CompanyBrandingController extends Controller
             if ($oldLogo !== '/logo.svg' && str_contains($oldLogo, '/storage/')) {
                 $oldPath = str_replace('/storage/', '', $oldLogo);
                 if (Storage::disk('public')->exists($oldPath)) {
-                    Storage::disk('public')->delete($oldPath);
+                    $this->deletePublicUpload($oldPath);
                 }
             }
         } else {
@@ -84,7 +86,7 @@ class CompanyBrandingController extends Controller
         if ($logo !== '/logo.svg' && str_contains($logo, '/storage/')) {
             $path = str_replace('/storage/', '', $logo);
             if (Storage::disk('public')->exists($path)) {
-                Storage::disk('public')->delete($path);
+                $this->deletePublicUpload($path);
             }
         }
 
@@ -114,10 +116,9 @@ class CompanyBrandingController extends Controller
             'branding.logo_url' => $logoUrl,
         ]);
 
-        // If config was cached, remove stale cache so new branding is loaded.
-        $cachedConfigPath = base_path('bootstrap/cache/config.php');
-        if (file_exists($cachedConfigPath)) {
-            @unlink($cachedConfigPath);
+        // If config was cached, rebuild it so new branding is loaded.
+        if (file_exists(base_path('bootstrap/cache/config.php'))) {
+            Artisan::call('config:cache');
         }
     }
 
