@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Product extends Model
 {
@@ -45,5 +46,32 @@ class Product extends Model
     public function isLowStock(): bool
     {
         return $this->stock_quantity <= $this->low_stock_threshold;
+    }
+
+    public function getImageUrlAttribute(): ?string
+    {
+        if (! $this->image_path) {
+            return null;
+        }
+
+        $path = $this->image_path;
+
+        if (Str::startsWith($path, ['http://', 'https://'])) {
+            return $path;
+        }
+
+        if (Str::startsWith($path, '/storage/')) {
+            return asset(ltrim($path, '/'));
+        }
+
+        if (Str::startsWith($path, 'storage/')) {
+            return asset($path);
+        }
+
+        if (Str::startsWith($path, '/')) {
+            return asset(ltrim($path, '/'));
+        }
+
+        return asset('storage/' . $path);
     }
 }

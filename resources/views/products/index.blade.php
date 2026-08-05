@@ -24,8 +24,8 @@
                 @forelse($products as $product)
                     <tr>
                         <td>
-                            @if($product->image_path)
-                                <img src="{{ asset('storage/' . $product->image_path) }}" alt="{{ $product->name }}" style="width: 50px; height: 50px; object-fit: cover;">
+                            @if($product->image_url)
+                                <img src="{{ $product->image_url }}" alt="{{ $product->name }}" style="width: 50px; height: 50px; object-fit: cover;">
                             @endif
                         </td>
                         <td>{{ $product->name }}</td>

@@ -63,8 +63,8 @@
                         @foreach($categoryProducts as $product)
                             <div class="col-md-6 col-xl-4">
                                 <div class="card h-100 shadow-sm border-0">
-                                    @if($product->image_path)
-                                        <img src="{{ asset('storage/' . $product->image_path) }}" class="card-img-top" alt="{{ $product->name }}" style="height: 180px; object-fit: cover;">
+                                    @if($product->image_url)
+                                        <img src="{{ $product->image_url }}" class="card-img-top" alt="{{ $product->name }}" style="height: 180px; object-fit: cover;">
                                     @else
                                         <div class="bg-warning-subtle d-flex align-items-center justify-content-center" style="height: 180px;">
                                             <span class="fw-bold text-secondary">{{ $categoryName }}</span>
