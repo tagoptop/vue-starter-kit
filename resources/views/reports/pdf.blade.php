@@ -13,6 +13,7 @@
     <h2>Construction Supply - Sales Report ({{ ucfirst($range) }})</h2>
     <p>Period: {{ $start->format('Y-m-d') }} to {{ $end->format('Y-m-d') }}</p>
     <p><strong>Total Sales:</strong> ₱{{ number_format($salesTotal, 2) }}</p>
+    <p><strong>Collected Payments:</strong> ₱{{ number_format($collectedTotal, 2) }}</p>
 
     <table>
         <thead>
@@ -20,6 +21,10 @@
                 <th>Order #</th>
                 <th>Customer</th>
                 <th>Status</th>
+                <th>Method</th>
+                <th>Pay Status</th>
+                <th>Reference</th>
+                <th>Paid</th>
                 <th>Total</th>
                 <th>Date</th>
             </tr>
@@ -30,6 +35,21 @@
                     <td>{{ $order->order_number }}</td>
                     <td>{{ $order->customer?->name }}</td>
                     <td>{{ ucfirst($order->status) }}</td>
+                    <td>
+                        {{ ucfirst(str_replace('_', ' ', $order->payment_method ?? 'cod')) }}
+                        @if($order->payment_method === 'other' && $order->payment_other_method)
+                            ({{ $order->payment_other_method }})
+                        @endif
+                    </td>
+                    <td>{{ ucfirst($order->payment_status ?? 'unpaid') }}</td>
+                    <td>{{ $order->payment_reference ?: '-' }}</td>
+                    <td>
+                        @if($order->payment_status === 'paid')
+                            ₱{{ number_format((float) ($order->paid_amount ?? $order->total_amount), 2) }}
+                        @else
+                            -
+                        @endif
+                    </td>
                     <td>₱{{ number_format($order->total_amount, 2) }}</td>
                     <td>{{ $order->created_at->format('Y-m-d H:i') }}</td>
                 </tr>

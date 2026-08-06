@@ -17,6 +17,8 @@ class ReportController extends Controller
         $customFrom = $request->get('from');
         $customTo = $request->get('to');
         $status = $request->get('status', 'all');
+        $paymentMethod = $request->get('payment_method', 'all');
+        $paymentStatus = $request->get('payment_status', 'all');
 
         // Use custom dates if provided, otherwise use predefined ranges
         if ($customFrom && $customTo) {
@@ -36,11 +38,38 @@ class ReportController extends Controller
             $query->whereIn('status', ['approved', 'delivered']);
         }
 
+        if ($paymentMethod !== 'all') {
+            $query->where('payment_method', $paymentMethod);
+        }
+
+        if ($paymentStatus !== 'all') {
+            $query->where('payment_status', $paymentStatus);
+        }
+
         $orders = $query->latest()->get();
 
         $salesTotal = $orders->sum('total_amount');
+        $collectedTotal = $orders->sum(function (Order $order): float {
+            if ($order->payment_status !== 'paid') {
+                return 0;
+            }
 
-        return view('reports.index', compact('orders', 'salesTotal', 'range', 'start', 'end', 'customFrom', 'customTo', 'status'));
+            return (float) ($order->paid_amount ?? $order->total_amount);
+        });
+
+        return view('reports.index', compact(
+            'orders',
+            'salesTotal',
+            'collectedTotal',
+            'range',
+            'start',
+            'end',
+            'customFrom',
+            'customTo',
+            'status',
+            'paymentMethod',
+            'paymentStatus'
+        ));
     }
 
     public function exportExcel(Request $request)
@@ -49,6 +78,8 @@ class ReportController extends Controller
         $customFrom = $request->get('from');
         $customTo = $request->get('to');
         $status = $request->get('status', 'all');
+        $paymentMethod = $request->get('payment_method', 'all');
+        $paymentStatus = $request->get('payment_status', 'all');
 
         // Use custom dates if provided, otherwise use predefined ranges
         if ($customFrom && $customTo) {
@@ -68,15 +99,31 @@ class ReportController extends Controller
             $query->whereIn('status', ['approved', 'delivered']);
         }
 
+        if ($paymentMethod !== 'all') {
+            $query->where('payment_method', $paymentMethod);
+        }
+
+        if ($paymentStatus !== 'all') {
+            $query->where('payment_status', $paymentStatus);
+        }
+
         $orders = $query->get();
 
-        $csv = "Order Number,Customer,Status,Total,Date\n";
+        $csv = "Order Number,Customer,Status,Payment Method,Payment Status,Payment Reference,Paid Amount,Total,Date\n";
 
         foreach ($orders as $order) {
+            $paidAmount = $order->payment_status === 'paid'
+                ? (float) ($order->paid_amount ?? $order->total_amount)
+                : 0;
+
             $csv .= implode(',', [
                 $order->order_number,
                 '"' . str_replace('"', '""', $order->customer?->name ?? 'N/A') . '"',
                 $order->status,
+                '"' . str_replace('"', '""', (string) ($order->payment_method ?? 'cod')) . '"',
+                '"' . str_replace('"', '""', (string) ($order->payment_status ?? 'unpaid')) . '"',
+                '"' . str_replace('"', '""', (string) ($order->payment_reference ?? '')) . '"',
+                number_format($paidAmount, 2, '.', ''),
                 number_format((float) $order->total_amount, 2, '.', ''),
                 $order->created_at->format('Y-m-d H:i:s'),
             ]) . "\n";
@@ -94,6 +141,8 @@ class ReportController extends Controller
         $customFrom = $request->get('from');
         $customTo = $request->get('to');
         $status = $request->get('status', 'all');
+        $paymentMethod = $request->get('payment_method', 'all');
+        $paymentStatus = $request->get('payment_status', 'all');
 
         // Use custom dates if provided, otherwise use predefined ranges
         if ($customFrom && $customTo) {
@@ -113,11 +162,26 @@ class ReportController extends Controller
             $query->whereIn('status', ['approved', 'delivered']);
         }
 
+        if ($paymentMethod !== 'all') {
+            $query->where('payment_method', $paymentMethod);
+        }
+
+        if ($paymentStatus !== 'all') {
+            $query->where('payment_status', $paymentStatus);
+        }
+
         $orders = $query->latest()->get();
 
         $salesTotal = $orders->sum('total_amount');
+        $collectedTotal = $orders->sum(function (Order $order): float {
+            if ($order->payment_status !== 'paid') {
+                return 0;
+            }
 
-        $pdf = Pdf::loadView('reports.pdf', compact('orders', 'salesTotal', 'range', 'start', 'end'));
+            return (float) ($order->paid_amount ?? $order->total_amount);
+        });
+
+        $pdf = Pdf::loadView('reports.pdf', compact('orders', 'salesTotal', 'collectedTotal', 'range', 'start', 'end'));
 
         return $pdf->download('sales-report-' . $range . '.pdf');
     }
