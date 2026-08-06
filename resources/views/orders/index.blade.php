@@ -16,6 +16,7 @@
                     <th>Order #</th>
                     <th>Customer</th>
                     <th>Status</th>
+                    <th>Payment</th>
                     <th>Scheduled Delivery</th>
                     <th>Total</th>
                     <th>Date</th>
@@ -33,6 +34,15 @@
                         <td>{{ $order->order_number }}</td>
                         <td>{{ $order->customer?->name }}</td>
                         <td><span class="badge bg-secondary">{{ ucfirst($order->status) }}</span></td>
+                        <td>
+                            <div class="small fw-semibold">
+                                {{ ucfirst(str_replace('_', ' ', $order->payment_method ?? 'cod')) }}
+                                @if($order->payment_method === 'other' && $order->payment_other_method)
+                                    ({{ $order->payment_other_method }})
+                                @endif
+                            </div>
+                            <div class="small text-muted">{{ ucfirst($order->payment_status ?? 'unpaid') }}</div>
+                        </td>
                         <td>{{ $order->scheduled_for?->format('M d, Y') ?? 'Not scheduled' }}</td>
                         <td>₱{{ number_format($order->total_amount, 2) }}</td>
                         <td>{{ $order->created_at->format('Y-m-d') }}</td>
@@ -55,7 +65,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="text-center">No orders found.</td></tr>
+                    <tr><td colspan="8" class="text-center">No orders found.</td></tr>
                 @endforelse
             </tbody>
         </table>

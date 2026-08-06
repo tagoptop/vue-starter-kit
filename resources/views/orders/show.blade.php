@@ -32,6 +32,26 @@
         @endif
         <p class="mb-1"><strong>Status:</strong> {{ ucfirst($order->status) }}</p>
         <p class="mb-1"><strong>Scheduled Delivery:</strong> {{ $order->scheduled_for?->format('M d, Y') ?? 'Not scheduled' }}</p>
+        <p class="mb-1">
+            <strong>Transaction Method:</strong>
+            {{ ucfirst(str_replace('_', ' ', $order->payment_method ?? 'cod')) }}
+            @if($order->payment_method === 'other' && $order->payment_other_method)
+                ({{ $order->payment_other_method }})
+            @endif
+        </p>
+        <p class="mb-1"><strong>Payment Status:</strong> {{ ucfirst($order->payment_status ?? 'unpaid') }}</p>
+        @if($order->payment_reference)
+            <p class="mb-1"><strong>Payment Reference:</strong> {{ $order->payment_reference }}</p>
+        @endif
+        @if($order->paid_amount)
+            <p class="mb-1"><strong>Amount Paid:</strong> ₱{{ number_format($order->paid_amount, 2) }}</p>
+        @endif
+        @if($order->paid_at)
+            <p class="mb-1"><strong>Paid At:</strong> {{ $order->paid_at->format('M d, Y h:i A') }}</p>
+        @endif
+        @if($order->payment_notes)
+            <p class="mb-1"><strong>Payment Notes:</strong> {{ $order->payment_notes }}</p>
+        @endif
         <p class="mb-1"><strong>Total:</strong> ₱{{ number_format($order->total_amount, 2) }}</p>
         <p class="mb-1"><strong>Customer Notes:</strong> {{ $order->notes ?: 'No customer notes provided.' }}</p>
         @if($order->proof_of_delivery_path)

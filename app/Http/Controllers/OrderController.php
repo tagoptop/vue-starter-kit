@@ -15,6 +15,9 @@ use Illuminate\View\View;
 
 class OrderController extends Controller
 {
+    private const PAYMENT_METHODS = ['cash', 'cod', 'check', 'credit_card', 'gcash', 'bank_transfer', 'other'];
+    private const PAYMENT_STATUSES = ['unpaid', 'pending', 'paid'];
+
     public function deliveryMonitoring(Request $request): View
     {
         $status = $request->input('status');
@@ -119,6 +122,10 @@ class OrderController extends Controller
             'delivery_longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:delivery_latitude'],
             'scheduled_for' => ['nullable', 'date', 'after_or_equal:today'],
             'notes' => ['nullable', 'string'],
+            'payment_method' => ['required', 'in:' . implode(',', self::PAYMENT_METHODS)],
+            'payment_other_method' => ['nullable', 'string', 'max:80', 'required_if:payment_method,other'],
+            'payment_reference' => ['nullable', 'string', 'max:120'],
+            'payment_notes' => ['nullable', 'string'],
         ]);
 
         $cart = $this->getCart();
@@ -134,6 +141,11 @@ class OrderController extends Controller
                     'customer_id' => $request->user()->id,
                     'status' => 'pending',
                     'delivery_priority' => ((int) Order::where('status', 'pending')->max('delivery_priority')) + 1,
+                    'payment_method' => $validated['payment_method'],
+                    'payment_status' => in_array($validated['payment_method'], ['check', 'credit_card', 'gcash', 'bank_transfer'], true) ? 'pending' : 'unpaid',
+                    'payment_other_method' => $validated['payment_method'] === 'other' ? ($validated['payment_other_method'] ?? null) : null,
+                    'payment_reference' => $validated['payment_reference'] ?? null,
+                    'payment_notes' => $validated['payment_notes'] ?? null,
                     'delivery_address' => $validated['delivery_address'],
                     'delivery_latitude' => $validated['delivery_latitude'] ?? null,
                     'delivery_longitude' => $validated['delivery_longitude'] ?? null,
@@ -287,13 +299,17 @@ class OrderController extends Controller
             'driver_name' => ['nullable', 'string', 'max:255'],
             'driver_phone' => ['nullable', 'string', 'max:30'],
             'delivery_notes' => ['nullable', 'string'],
+            'payment_method' => ['nullable', 'in:' . implode(',', self::PAYMENT_METHODS)],
+            'payment_other_method' => ['nullable', 'string', 'max:80', 'required_if:payment_method,other'],
+            'payment_status' => ['nullable', 'in:' . implode(',', self::PAYMENT_STATUSES)],
+            'payment_reference' => ['nullable', 'string', 'max:120'],
+            'paid_amount' => ['nullable', 'numeric', 'min:0'],
+            'payment_notes' => ['nullable', 'string'],
             'proof_of_delivery' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:4096'],
         ]);
 
         $updates = [
             'status' => $validated['status'],
-            'driver_name' => $validated['driver_name'] ?? null,
-            'driver_phone' => $validated['driver_phone'] ?? null,
         ];
 
         if ($order->status !== $validated['status']) {
@@ -304,8 +320,50 @@ class OrderController extends Controller
             $updates['scheduled_for'] = $validated['scheduled_for'] ?? null;
         }
 
+        if ($request->has('driver_name')) {
+            $updates['driver_name'] = $validated['driver_name'] ?? null;
+        }
+
+        if ($request->has('driver_phone')) {
+            $updates['driver_phone'] = $validated['driver_phone'] ?? null;
+        }
+
         if ($request->has('delivery_notes')) {
             $updates['delivery_notes'] = $validated['delivery_notes'];
+        }
+
+        if ($request->has('payment_method')) {
+            $paymentMethod = $validated['payment_method'] ?? $order->payment_method ?? 'cod';
+            $updates['payment_method'] = $paymentMethod;
+            $updates['payment_other_method'] = $paymentMethod === 'other' ? ($validated['payment_other_method'] ?? null) : null;
+        }
+
+        if ($request->has('payment_status')) {
+            $updates['payment_status'] = $validated['payment_status'] ?? $order->payment_status ?? 'unpaid';
+        }
+
+        if ($request->has('payment_reference')) {
+            $updates['payment_reference'] = $validated['payment_reference'] ?? null;
+        }
+
+        if ($request->has('payment_notes')) {
+            $updates['payment_notes'] = $validated['payment_notes'] ?? null;
+        }
+
+        if ($request->has('paid_amount')) {
+            $updates['paid_amount'] = $validated['paid_amount'] ?? null;
+        }
+
+        if (($updates['payment_status'] ?? $order->payment_status) === 'paid') {
+            $updates['paid_at'] = $order->paid_at ?? now();
+            if (! isset($updates['paid_amount']) || $updates['paid_amount'] === null) {
+                $updates['paid_amount'] = $order->total_amount;
+            }
+        } elseif ($request->has('payment_status')) {
+            $updates['paid_at'] = null;
+            if (! $request->has('paid_amount')) {
+                $updates['paid_amount'] = null;
+            }
         }
 
         if ($validated['status'] === 'delivered') {
@@ -328,7 +386,18 @@ class OrderController extends Controller
 
         $order->update($updates);
 
-        $hasDeliveryUpdate = $request->hasAny(['delivery_notes', 'driver_name', 'driver_phone', 'scheduled_for']) || $request->hasFile('proof_of_delivery');
+        $hasDeliveryUpdate = $request->hasAny([
+            'delivery_notes',
+            'driver_name',
+            'driver_phone',
+            'scheduled_for',
+            'payment_method',
+            'payment_other_method',
+            'payment_status',
+            'payment_reference',
+            'paid_amount',
+            'payment_notes',
+        ]) || $request->hasFile('proof_of_delivery');
 
         return back()->with('success', $hasDeliveryUpdate ? 'Delivery updated.' : 'Order status updated.');
     }

@@ -131,6 +131,12 @@
                                 data-driver-name="{{ $boardOrder->driver_name ?? '' }}"
                                 data-driver-phone="{{ $boardOrder->driver_phone ?? '' }}"
                                 data-delivery-notes="{{ $boardOrder->delivery_notes ?? '' }}"
+                                data-payment-method="{{ $boardOrder->payment_method ?? 'cod' }}"
+                                data-payment-other-method="{{ $boardOrder->payment_other_method ?? '' }}"
+                                data-payment-status="{{ $boardOrder->payment_status ?? 'unpaid' }}"
+                                data-payment-reference="{{ $boardOrder->payment_reference ?? '' }}"
+                                data-paid-amount="{{ $boardOrder->paid_amount ?? '' }}"
+                                data-payment-notes="{{ $boardOrder->payment_notes ?? '' }}"
                             >
                                 <div class="d-flex justify-content-between gap-2 mb-2">
                                     <strong>{{ $boardOrder->order_number }}</strong>
@@ -143,6 +149,7 @@
                                 <div class="small text-muted mb-1">Order Details</div>
                                 <div class="small">Items: {{ $boardOrder->items_count }} | Total: PHP {{ number_format((float) $boardOrder->total_amount, 2) }}</div>
                                 <div class="small text-muted">Scheduled: {{ $boardOrder->scheduled_for?->format('M d, Y') ?? 'Not scheduled' }}</div>
+                                <div class="small text-muted">Payment: {{ ucfirst(str_replace('_', ' ', $boardOrder->payment_method ?? 'cod')) }} | {{ ucfirst($boardOrder->payment_status ?? 'unpaid') }}</div>
                             </article>
                         @empty
                             <div class="delivery-lane-empty text-muted" data-lane-empty>
@@ -217,6 +224,23 @@
                                 <div>{{ $order->driver_name ?: 'No driver assigned yet.' }}</div>
                                 @if($order->driver_phone)
                                     <div class="small text-muted">Contact: {{ $order->driver_phone }}</div>
+                                @endif
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="small text-uppercase text-muted mb-1">Payment</div>
+                                <div>
+                                    {{ ucfirst(str_replace('_', ' ', $order->payment_method ?? 'cod')) }}
+                                    @if($order->payment_method === 'other' && $order->payment_other_method)
+                                        ({{ $order->payment_other_method }})
+                                    @endif
+                                </div>
+                                <div class="small text-muted">Status: {{ ucfirst($order->payment_status ?? 'unpaid') }}</div>
+                                @if($order->payment_reference)
+                                    <div class="small text-muted">Reference: {{ $order->payment_reference }}</div>
+                                @endif
+                                @if($order->paid_amount)
+                                    <div class="small text-muted">Paid: ₱{{ number_format((float) $order->paid_amount, 2) }}</div>
                                 @endif
                             </div>
 
@@ -299,6 +323,79 @@
                                         value="{{ old('driver_phone.' . $order->id, $order->driver_phone) }}"
                                         placeholder="Phone number"
                                     >
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="payment-method-{{ $order->id }}" class="form-label">Transaction Method</label>
+                                    <select id="payment-method-{{ $order->id }}" name="payment_method" class="form-select">
+                                        <option value="cash" @selected($order->payment_method === 'cash')>Cash</option>
+                                        <option value="cod" @selected(($order->payment_method ?? 'cod') === 'cod')>Cash on Delivery (COD)</option>
+                                        <option value="check" @selected($order->payment_method === 'check')>Check</option>
+                                        <option value="credit_card" @selected($order->payment_method === 'credit_card')>Credit Card</option>
+                                        <option value="gcash" @selected($order->payment_method === 'gcash')>GCash</option>
+                                        <option value="bank_transfer" @selected($order->payment_method === 'bank_transfer')>Bank Transfer</option>
+                                        <option value="other" @selected($order->payment_method === 'other')>Other</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="payment-other-method-{{ $order->id }}" class="form-label">Other Method (if Other)</label>
+                                    <input
+                                        type="text"
+                                        id="payment-other-method-{{ $order->id }}"
+                                        name="payment_other_method"
+                                        class="form-control"
+                                        value="{{ old('payment_other_method.' . $order->id, $order->payment_other_method) }}"
+                                        maxlength="80"
+                                        placeholder="Specify transaction method"
+                                    >
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="payment-status-{{ $order->id }}" class="form-label">Payment Status</label>
+                                    <select id="payment-status-{{ $order->id }}" name="payment_status" class="form-select">
+                                        <option value="unpaid" @selected(($order->payment_status ?? 'unpaid') === 'unpaid')>Unpaid</option>
+                                        <option value="pending" @selected($order->payment_status === 'pending')>Pending Verification</option>
+                                        <option value="paid" @selected($order->payment_status === 'paid')>Paid</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="payment-reference-{{ $order->id }}" class="form-label">Payment Reference</label>
+                                    <input
+                                        type="text"
+                                        id="payment-reference-{{ $order->id }}"
+                                        name="payment_reference"
+                                        class="form-control"
+                                        value="{{ old('payment_reference.' . $order->id, $order->payment_reference) }}"
+                                        maxlength="120"
+                                        placeholder="Transaction or check reference"
+                                    >
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="paid-amount-{{ $order->id }}" class="form-label">Paid Amount</label>
+                                    <input
+                                        type="number"
+                                        id="paid-amount-{{ $order->id }}"
+                                        name="paid_amount"
+                                        class="form-control"
+                                        min="0"
+                                        step="0.01"
+                                        value="{{ old('paid_amount.' . $order->id, $order->paid_amount) }}"
+                                        placeholder="0.00"
+                                    >
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="payment-notes-{{ $order->id }}" class="form-label">Payment Notes</label>
+                                    <textarea
+                                        id="payment-notes-{{ $order->id }}"
+                                        name="payment_notes"
+                                        rows="2"
+                                        class="form-control"
+                                        placeholder="Verification notes or collection details"
+                                    >{{ old('payment_notes.' . $order->id, $order->payment_notes) }}</textarea>
                                 </div>
 
                                     @if($order->proof_of_delivery_path)
@@ -594,6 +691,12 @@
                 formData.append('driver_name', card.dataset.driverName || '');
                 formData.append('driver_phone', card.dataset.driverPhone || '');
                 formData.append('delivery_notes', card.dataset.deliveryNotes || '');
+                formData.append('payment_method', card.dataset.paymentMethod || 'cod');
+                formData.append('payment_other_method', card.dataset.paymentOtherMethod || '');
+                formData.append('payment_status', card.dataset.paymentStatus || 'unpaid');
+                formData.append('payment_reference', card.dataset.paymentReference || '');
+                formData.append('paid_amount', card.dataset.paidAmount || '');
+                formData.append('payment_notes', card.dataset.paymentNotes || '');
 
                 const response = await fetch(updateTemplate.replace('__ORDER__', orderId), {
                     method: 'POST',

@@ -245,6 +245,50 @@
                         </div>
 
                         <div class="mb-3">
+                            <label class="form-label" for="payment_method">Transaction Method</label>
+                            <select id="payment_method" name="payment_method" class="form-select" required>
+                                <option value="cash" @selected(old('payment_method') === 'cash')>Cash</option>
+                                <option value="cod" @selected(old('payment_method', 'cod') === 'cod')>Cash on Delivery (COD)</option>
+                                <option value="check" @selected(old('payment_method') === 'check')>Check</option>
+                                <option value="credit_card" @selected(old('payment_method') === 'credit_card')>Credit Card</option>
+                                <option value="gcash" @selected(old('payment_method') === 'gcash')>GCash</option>
+                                <option value="bank_transfer" @selected(old('payment_method') === 'bank_transfer')>Bank Transfer</option>
+                                <option value="other" @selected(old('payment_method') === 'other')>Other</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="payment_other_method">Other Transaction Method (if Other)</label>
+                            <input
+                                type="text"
+                                id="payment_other_method"
+                                name="payment_other_method"
+                                class="form-control"
+                                value="{{ old('payment_other_method') }}"
+                                maxlength="80"
+                                placeholder="Specify method, e.g. Maya, PayPal, company charge account"
+                            >
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="payment_reference">Payment Reference (optional)</label>
+                            <input
+                                type="text"
+                                id="payment_reference"
+                                name="payment_reference"
+                                class="form-control"
+                                value="{{ old('payment_reference') }}"
+                                maxlength="120"
+                                placeholder="Reference number, check number, or transaction id"
+                            >
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="payment_notes">Payment Notes (optional)</label>
+                            <textarea id="payment_notes" name="payment_notes" class="form-control" rows="2" placeholder="Any remarks for this transaction">{{ old('payment_notes') }}</textarea>
+                        </div>
+
+                        <div class="mb-3">
                             <label class="form-label">Customer Notes</label>
                             <textarea name="notes" class="form-control" rows="3" placeholder="Requests, site reminders, or project reference">{{ old('notes') }}</textarea>
                         </div>
