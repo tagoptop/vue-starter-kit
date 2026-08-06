@@ -83,6 +83,79 @@
     </div>
 </div>
 
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <div>
+                <h5 class="mb-1">Filtered Delivery Cards</h5>
+                <p class="text-muted mb-0">Swipe left or right to browse columns, then drag a card to update delivery status.</p>
+            </div>
+            <div class="small text-muted">Showing {{ $orders->count() }} cards on this page</div>
+        </div>
+
+        <div id="deliveryBoardAlert" class="alert alert-success py-2 px-3 d-none" role="status" aria-live="polite"></div>
+
+        <div class="delivery-board" id="deliveryBoard" aria-label="Delivery status board">
+            @php
+                $boardGroups = [
+                    'pending' => ['label' => 'Pending', 'badge' => 'warning text-dark'],
+                    'approved' => ['label' => 'Approved', 'badge' => 'primary'],
+                    'delivered' => ['label' => 'Delivered', 'badge' => 'success'],
+                ];
+            @endphp
+
+            @foreach($boardGroups as $boardStatus => $boardMeta)
+                @php
+                    $statusOrders = $orders->where('status', $boardStatus)->values();
+                @endphp
+                <section class="delivery-lane" data-status="{{ $boardStatus }}" aria-label="{{ $boardMeta['label'] }} deliveries">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">{{ $boardMeta['label'] }}</h6>
+                        <span class="badge bg-{{ $boardMeta['badge'] }}" data-lane-count>{{ $statusOrders->count() }}</span>
+                    </div>
+
+                    <div class="delivery-lane-dropzone" data-dropzone>
+                        @forelse($statusOrders as $boardOrder)
+                            <article
+                                class="delivery-swipe-card"
+                                draggable="true"
+                                data-card-id="{{ $boardOrder->id }}"
+                                data-order-number="{{ $boardOrder->order_number }}"
+                                data-current-status="{{ $boardOrder->status }}"
+                                data-customer-name="{{ $boardOrder->customer?->name ?? 'Unknown' }}"
+                                data-address="{{ $boardOrder->delivery_address ?: 'Not provided' }}"
+                                data-total="{{ number_format((float) $boardOrder->total_amount, 2) }}"
+                                data-items-count="{{ $boardOrder->items_count }}"
+                                data-scheduled-for="{{ $boardOrder->scheduled_for?->format('M d, Y') ?? 'Not scheduled' }}"
+                                data-scheduled-for-value="{{ $boardOrder->scheduled_for?->toDateString() ?? '' }}"
+                                data-driver-name="{{ $boardOrder->driver_name ?? '' }}"
+                                data-driver-phone="{{ $boardOrder->driver_phone ?? '' }}"
+                                data-delivery-notes="{{ $boardOrder->delivery_notes ?? '' }}"
+                            >
+                                <div class="d-flex justify-content-between gap-2 mb-2">
+                                    <strong>{{ $boardOrder->order_number }}</strong>
+                                    <span class="badge bg-light text-dark border">{{ ucfirst($boardOrder->status) }}</span>
+                                </div>
+                                <div class="small text-muted mb-1">Name</div>
+                                <div class="mb-2 fw-semibold">{{ $boardOrder->customer?->name ?? 'Unknown' }}</div>
+                                <div class="small text-muted mb-1">Address</div>
+                                <div class="mb-2">{{ $boardOrder->delivery_address ?: 'Not provided' }}</div>
+                                <div class="small text-muted mb-1">Order Details</div>
+                                <div class="small">Items: {{ $boardOrder->items_count }} | Total: PHP {{ number_format((float) $boardOrder->total_amount, 2) }}</div>
+                                <div class="small text-muted">Scheduled: {{ $boardOrder->scheduled_for?->format('M d, Y') ?? 'Not scheduled' }}</div>
+                            </article>
+                        @empty
+                            <div class="delivery-lane-empty text-muted" data-lane-empty>
+                                No {{ strtolower($boardMeta['label']) }} cards.
+                            </div>
+                        @endforelse
+                    </div>
+                </section>
+            @endforeach
+        </div>
+    </div>
+</div>
+
 <div class="row g-4">
     @forelse($orders as $order)
         @php
@@ -290,6 +363,71 @@
             background-color: #16a34a;
             border-color: #15803d;
         }
+
+        .delivery-board {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(260px, 1fr));
+            gap: 1rem;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+            touch-action: pan-x;
+            scroll-snap-type: x mandatory;
+        }
+
+        .delivery-lane {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 0.75rem;
+            min-height: 280px;
+            scroll-snap-align: start;
+        }
+
+        .delivery-lane-dropzone {
+            min-height: 220px;
+            display: grid;
+            gap: 0.6rem;
+            align-content: start;
+        }
+
+        .delivery-lane.is-drop-target {
+            border-color: #2563eb;
+            box-shadow: inset 0 0 0 1px #2563eb;
+            background: #eff6ff;
+        }
+
+        .delivery-swipe-card {
+            border: 1px solid #dbeafe;
+            border-radius: 0.65rem;
+            padding: 0.75rem;
+            background: #ffffff;
+            cursor: grab;
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+
+        .delivery-swipe-card.is-dragging {
+            opacity: 0.7;
+            cursor: grabbing;
+            transform: scale(0.99);
+        }
+
+        .delivery-swipe-card:hover {
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+        }
+
+        .delivery-lane-empty {
+            border: 1px dashed #cbd5e1;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+            background: #f8fafc;
+        }
+
+        @media (max-width: 992px) {
+            .delivery-board {
+                grid-template-columns: repeat(3, minmax(290px, 82vw));
+            }
+        }
     </style>
 @endpush
 
@@ -323,6 +461,211 @@
             });
 
             calendar.render();
+
+            const board = document.getElementById('deliveryBoard');
+            if (!board) {
+                return;
+            }
+
+            const csrfToken = @json(csrf_token());
+            const updateTemplate = @json(route('orders.update-status', '__ORDER__'));
+            const alertElement = document.getElementById('deliveryBoardAlert');
+            let draggedCard = null;
+            let swipePointer = null;
+
+            const showBoardAlert = (message, isError = false) => {
+                if (!alertElement) {
+                    return;
+                }
+
+                alertElement.classList.remove('d-none', 'alert-success', 'alert-danger');
+                alertElement.classList.add(isError ? 'alert-danger' : 'alert-success');
+                alertElement.textContent = message;
+            };
+
+            const refreshLaneEmptyState = (lane) => {
+                const dropzone = lane.querySelector('[data-dropzone]');
+                if (!dropzone) {
+                    return;
+                }
+
+                const hasCards = dropzone.querySelector('.delivery-swipe-card') !== null;
+                let emptyState = dropzone.querySelector('[data-lane-empty]');
+
+                if (!hasCards && !emptyState) {
+                    emptyState = document.createElement('div');
+                    emptyState.className = 'delivery-lane-empty text-muted';
+                    emptyState.setAttribute('data-lane-empty', 'true');
+                    emptyState.textContent = `No ${lane.dataset.status} cards.`;
+                    dropzone.appendChild(emptyState);
+                }
+
+                if (hasCards && emptyState) {
+                    emptyState.remove();
+                }
+            };
+
+            const refreshLaneCounts = () => {
+                board.querySelectorAll('.delivery-lane').forEach((lane) => {
+                    const countTag = lane.querySelector('[data-lane-count]');
+                    if (!countTag) {
+                        return;
+                    }
+                    const count = lane.querySelectorAll('.delivery-swipe-card').length;
+                    countTag.textContent = String(count);
+                    refreshLaneEmptyState(lane);
+                });
+            };
+
+            const updateCardStatus = (card, laneStatus) => {
+                const badge = card.querySelector('.badge');
+                if (badge) {
+                    badge.textContent = laneStatus.charAt(0).toUpperCase() + laneStatus.slice(1);
+                }
+                card.dataset.currentStatus = laneStatus;
+            };
+
+            const persistStatusChange = async (card, newStatus) => {
+                const orderId = card.dataset.cardId;
+                if (!orderId) {
+                    return { ok: false, message: 'Missing order id.' };
+                }
+
+                const formData = new FormData();
+                formData.append('_method', 'PATCH');
+                formData.append('status', newStatus);
+                formData.append('scheduled_for', card.dataset.scheduledForValue || '');
+                formData.append('driver_name', card.dataset.driverName || '');
+                formData.append('driver_phone', card.dataset.driverPhone || '');
+                formData.append('delivery_notes', card.dataset.deliveryNotes || '');
+
+                const response = await fetch(updateTemplate.replace('__ORDER__', orderId), {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken || '',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    },
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    return { ok: false, message: 'Unable to save status. Please try again.' };
+                }
+
+                return { ok: true };
+            };
+
+            board.querySelectorAll('.delivery-swipe-card').forEach((card) => {
+                card.addEventListener('dragstart', (event) => {
+                    draggedCard = card;
+                    card.classList.add('is-dragging');
+                    event.dataTransfer?.setData('text/plain', card.dataset.cardId || '');
+                    event.dataTransfer.effectAllowed = 'move';
+                });
+
+                card.addEventListener('dragend', () => {
+                    card.classList.remove('is-dragging');
+                    board.querySelectorAll('.delivery-lane').forEach((lane) => lane.classList.remove('is-drop-target'));
+                    draggedCard = null;
+                });
+            });
+
+            board.querySelectorAll('.delivery-lane').forEach((lane) => {
+                lane.addEventListener('dragover', (event) => {
+                    event.preventDefault();
+                    lane.classList.add('is-drop-target');
+                });
+
+                lane.addEventListener('dragleave', () => {
+                    lane.classList.remove('is-drop-target');
+                });
+
+                lane.addEventListener('drop', async (event) => {
+                    event.preventDefault();
+                    lane.classList.remove('is-drop-target');
+
+                    if (!draggedCard) {
+                        return;
+                    }
+
+                    const newStatus = lane.dataset.status;
+                    const previousLane = draggedCard.closest('.delivery-lane');
+                    const previousStatus = draggedCard.dataset.currentStatus;
+                    const dropzone = lane.querySelector('[data-dropzone]');
+
+                    if (!newStatus || !dropzone || !previousLane) {
+                        return;
+                    }
+
+                    if (newStatus === previousStatus) {
+                        dropzone.prepend(draggedCard);
+                        refreshLaneCounts();
+                        return;
+                    }
+
+                    dropzone.prepend(draggedCard);
+                    updateCardStatus(draggedCard, newStatus);
+                    refreshLaneCounts();
+
+                    try {
+                        const result = await persistStatusChange(draggedCard, newStatus);
+                        if (!result.ok) {
+                            const previousDropzone = previousLane.querySelector('[data-dropzone]');
+                            if (previousDropzone) {
+                                previousDropzone.prepend(draggedCard);
+                                updateCardStatus(draggedCard, previousStatus || 'pending');
+                                refreshLaneCounts();
+                            }
+
+                            showBoardAlert(result.message || 'Unable to move card.', true);
+                            return;
+                        }
+
+                        showBoardAlert(`Updated ${draggedCard.dataset.orderNumber} to ${newStatus}.`);
+                    } catch (error) {
+                        const previousDropzone = previousLane.querySelector('[data-dropzone]');
+                        if (previousDropzone) {
+                            previousDropzone.prepend(draggedCard);
+                            updateCardStatus(draggedCard, previousStatus || 'pending');
+                            refreshLaneCounts();
+                        }
+
+                        showBoardAlert('Network error while saving card movement.', true);
+                    }
+                });
+            });
+
+            board.addEventListener('pointerdown', (event) => {
+                if (!event.isPrimary || event.pointerType === 'mouse') {
+                    return;
+                }
+
+                swipePointer = {
+                    startX: event.clientX,
+                    startScrollLeft: board.scrollLeft,
+                    pointerId: event.pointerId,
+                };
+                board.setPointerCapture(event.pointerId);
+            });
+
+            board.addEventListener('pointermove', (event) => {
+                if (!swipePointer || swipePointer.pointerId !== event.pointerId) {
+                    return;
+                }
+
+                const delta = event.clientX - swipePointer.startX;
+                board.scrollLeft = swipePointer.startScrollLeft - delta;
+            });
+
+            const clearSwipePointer = () => {
+                swipePointer = null;
+            };
+
+            board.addEventListener('pointerup', clearSwipePointer);
+            board.addEventListener('pointercancel', clearSwipePointer);
+
+            refreshLaneCounts();
         });
     </script>
 @endpush
