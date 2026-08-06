@@ -8,6 +8,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
@@ -42,7 +43,9 @@ class OrderController extends Controller
             ->when(in_array($status, ['pending', 'approved', 'delivered'], true), function ($query) use ($status) {
                 $query->where('status', $status);
             })
-            ->latest()
+            ->orderByRaw("case status when 'pending' then 1 when 'approved' then 2 when 'delivered' then 3 else 4 end")
+            ->orderBy('delivery_priority')
+            ->latest('updated_at')
             ->paginate(10)
             ->withQueryString();
 
@@ -51,7 +54,8 @@ class OrderController extends Controller
             ->when(in_array($status, ['pending', 'approved', 'delivered'], true), function ($query) use ($status) {
                 $query->where('status', $status);
             })
-            ->latest()
+            ->orderBy('delivery_priority')
+            ->latest('updated_at')
             ->limit(300)
             ->get()
             ->map(function (Order $order): array {
@@ -129,6 +133,7 @@ class OrderController extends Controller
                     'order_number' => 'ORD-' . now()->format('YmdHis') . '-' . random_int(100, 999),
                     'customer_id' => $request->user()->id,
                     'status' => 'pending',
+                    'delivery_priority' => ((int) Order::where('status', 'pending')->max('delivery_priority')) + 1,
                     'delivery_address' => $validated['delivery_address'],
                     'delivery_latitude' => $validated['delivery_latitude'] ?? null,
                     'delivery_longitude' => $validated['delivery_longitude'] ?? null,
@@ -291,6 +296,10 @@ class OrderController extends Controller
             'driver_phone' => $validated['driver_phone'] ?? null,
         ];
 
+        if ($order->status !== $validated['status']) {
+            $updates['delivery_priority'] = ((int) Order::where('status', $validated['status'])->max('delivery_priority')) + 1;
+        }
+
         if ($request->has('scheduled_for')) {
             $updates['scheduled_for'] = $validated['scheduled_for'] ?? null;
         }
@@ -322,6 +331,40 @@ class OrderController extends Controller
         $hasDeliveryUpdate = $request->hasAny(['delivery_notes', 'driver_name', 'driver_phone', 'scheduled_for']) || $request->hasFile('proof_of_delivery');
 
         return back()->with('success', $hasDeliveryUpdate ? 'Delivery updated.' : 'Order status updated.');
+    }
+
+    public function reorderDeliveries(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'in:pending,approved,delivered'],
+            'ordered_ids' => ['required', 'array', 'min:1'],
+            'ordered_ids.*' => ['integer', 'distinct', 'exists:orders,id'],
+        ]);
+
+        $status = $validated['status'];
+        $orderedIds = $validated['ordered_ids'];
+
+        $matchingCount = Order::whereIn('id', $orderedIds)
+            ->where('status', $status)
+            ->count();
+
+        if ($matchingCount !== count($orderedIds)) {
+            return response()->json([
+                'message' => 'The provided list includes cards that do not match the selected lane.',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($orderedIds): void {
+            foreach ($orderedIds as $priority => $orderId) {
+                Order::whereKey($orderId)->update([
+                    'delivery_priority' => $priority + 1,
+                ]);
+            }
+        });
+
+        return response()->json([
+            'message' => 'Delivery order saved.',
+        ]);
     }
 
     private function getCart(): array

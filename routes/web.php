@@ -41,6 +41,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('deliveries', [OrderController::class, 'deliveryMonitoring'])->name('deliveries.index');
         Route::post('inventory/stock-in', [InventoryController::class, 'stockIn'])->name('inventory.stock-in');
         Route::post('inventory/stock-out', [InventoryController::class, 'stockOut'])->name('inventory.stock-out');
+        Route::patch('deliveries/reorder', [OrderController::class, 'reorderDeliveries'])->name('deliveries.reorder');
         Route::patch('orders/{order}/status', [OrderController::class, 'updateStatus'])->whereNumber('order')->name('orders.update-status');
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('reports/export/excel', [ReportController::class, 'exportExcel'])->name('reports.export.excel');

@@ -469,6 +469,7 @@
 
             const csrfToken = @json(csrf_token());
             const updateTemplate = @json(route('orders.update-status', '__ORDER__'));
+            const reorderUrl = @json(route('deliveries.reorder'));
             const alertElement = document.getElementById('deliveryBoardAlert');
             let draggedCard = null;
             let swipePointer = null;
@@ -525,6 +526,61 @@
                 card.dataset.currentStatus = laneStatus;
             };
 
+            const cardIdsInLane = (lane) => {
+                const dropzone = lane.querySelector('[data-dropzone]');
+                if (!dropzone) {
+                    return [];
+                }
+
+                return Array.from(dropzone.querySelectorAll('.delivery-swipe-card'))
+                    .map((card) => Number(card.dataset.cardId))
+                    .filter((id) => Number.isInteger(id) && id > 0);
+            };
+
+            const persistLaneOrder = async (lane) => {
+                const laneStatus = lane.dataset.status;
+                const orderedIds = cardIdsInLane(lane);
+
+                if (!laneStatus || orderedIds.length === 0) {
+                    return { ok: true };
+                }
+
+                const response = await fetch(reorderUrl, {
+                    method: 'PATCH',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken || '',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        status: laneStatus,
+                        ordered_ids: orderedIds,
+                    }),
+                });
+
+                if (!response.ok) {
+                    return { ok: false, message: 'Unable to save lane order. Please retry.' };
+                }
+
+                return { ok: true };
+            };
+
+            const getDragAfterElement = (container, y) => {
+                const candidates = [...container.querySelectorAll('.delivery-swipe-card:not(.is-dragging)')];
+
+                return candidates.reduce((closest, card) => {
+                    const box = card.getBoundingClientRect();
+                    const offset = y - box.top - box.height / 2;
+
+                    if (offset < 0 && offset > closest.offset) {
+                        return { offset, element: card };
+                    }
+
+                    return closest;
+                }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
+            };
+
             const persistStatusChange = async (card, newStatus) => {
                 const orderId = card.dataset.cardId;
                 if (!orderId) {
@@ -575,6 +631,23 @@
                 lane.addEventListener('dragover', (event) => {
                     event.preventDefault();
                     lane.classList.add('is-drop-target');
+
+                    if (!draggedCard) {
+                        return;
+                    }
+
+                    const dropzone = lane.querySelector('[data-dropzone]');
+                    if (!dropzone) {
+                        return;
+                    }
+
+                    const afterElement = getDragAfterElement(dropzone, event.clientY);
+                    if (!afterElement) {
+                        dropzone.appendChild(draggedCard);
+                        return;
+                    }
+
+                    dropzone.insertBefore(draggedCard, afterElement);
                 });
 
                 lane.addEventListener('dragleave', () => {
@@ -598,13 +671,22 @@
                         return;
                     }
 
+                    const previousLaneState = cardIdsInLane(previousLane);
+                    const currentLaneState = cardIdsInLane(lane);
+
                     if (newStatus === previousStatus) {
-                        dropzone.prepend(draggedCard);
                         refreshLaneCounts();
+
+                        const reorderResult = await persistLaneOrder(lane);
+                        if (!reorderResult.ok) {
+                            showBoardAlert(reorderResult.message || 'Unable to save card order.', true);
+                        } else {
+                            showBoardAlert(`Saved order for ${newStatus} lane.`);
+                        }
+
                         return;
                     }
 
-                    dropzone.prepend(draggedCard);
                     updateCardStatus(draggedCard, newStatus);
                     refreshLaneCounts();
 
@@ -613,7 +695,11 @@
                         if (!result.ok) {
                             const previousDropzone = previousLane.querySelector('[data-dropzone]');
                             if (previousDropzone) {
-                                previousDropzone.prepend(draggedCard);
+                                const snapshotCards = previousLaneState
+                                    .map((id) => board.querySelector(`.delivery-swipe-card[data-card-id="${id}"]`))
+                                    .filter(Boolean);
+
+                                snapshotCards.forEach((snapshotCard) => previousDropzone.appendChild(snapshotCard));
                                 updateCardStatus(draggedCard, previousStatus || 'pending');
                                 refreshLaneCounts();
                             }
@@ -622,11 +708,43 @@
                             return;
                         }
 
+                        const [targetLanePersist, previousLanePersist] = await Promise.all([
+                            persistLaneOrder(lane),
+                            previousLane === lane ? Promise.resolve({ ok: true }) : persistLaneOrder(previousLane),
+                        ]);
+
+                        if (!targetLanePersist.ok || !previousLanePersist.ok) {
+                            const previousDropzone = previousLane.querySelector('[data-dropzone]');
+                            if (previousDropzone) {
+                                const snapshotCards = previousLaneState
+                                    .map((id) => board.querySelector(`.delivery-swipe-card[data-card-id="${id}"]`))
+                                    .filter(Boolean);
+                                snapshotCards.forEach((snapshotCard) => previousDropzone.appendChild(snapshotCard));
+
+                                const newLaneDropzone = lane.querySelector('[data-dropzone]');
+                                if (newLaneDropzone) {
+                                    const currentCards = currentLaneState
+                                        .map((id) => board.querySelector(`.delivery-swipe-card[data-card-id="${id}"]`))
+                                        .filter(Boolean);
+                                    currentCards.forEach((currentCard) => newLaneDropzone.appendChild(currentCard));
+                                }
+
+                                updateCardStatus(draggedCard, previousStatus || 'pending');
+                                refreshLaneCounts();
+                            }
+
+                            showBoardAlert('Unable to persist lane priorities after status change.', true);
+                            return;
+                        }
+
                         showBoardAlert(`Updated ${draggedCard.dataset.orderNumber} to ${newStatus}.`);
                     } catch (error) {
                         const previousDropzone = previousLane.querySelector('[data-dropzone]');
                         if (previousDropzone) {
-                            previousDropzone.prepend(draggedCard);
+                            const snapshotCards = previousLaneState
+                                .map((id) => board.querySelector(`.delivery-swipe-card[data-card-id="${id}"]`))
+                                .filter(Boolean);
+                            snapshotCards.forEach((snapshotCard) => previousDropzone.appendChild(snapshotCard));
                             updateCardStatus(draggedCard, previousStatus || 'pending');
                             refreshLaneCounts();
                         }
@@ -638,6 +756,10 @@
 
             board.addEventListener('pointerdown', (event) => {
                 if (!event.isPrimary || event.pointerType === 'mouse') {
+                    return;
+                }
+
+                if (event.target.closest('.delivery-swipe-card')) {
                     return;
                 }
 

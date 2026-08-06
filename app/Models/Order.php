@@ -15,6 +15,7 @@ class Order extends Model
         'order_number',
         'customer_id',
         'status',
+        'delivery_priority',
         'total_amount',
         'delivery_address',
         'delivery_latitude',
@@ -33,6 +34,7 @@ class Order extends Model
         return [
             'delivery_latitude' => 'float',
             'delivery_longitude' => 'float',
+            'delivery_priority' => 'int',
             'scheduled_for' => 'date',
             'total_amount' => 'float',
             'delivered_at' => 'datetime',
