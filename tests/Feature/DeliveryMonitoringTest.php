@@ -34,6 +34,7 @@ it('allows admin users to monitor deliveries', function () {
     $response->assertSee('Zone 4, Riverside, Manila');
     $response->assertSee('Call before arrival');
     $response->assertSee('Driver should use side gate.');
+    $response->assertSee('Customer Delivery Locations');
 });
 
 it('allows staff to update delivery status and notes', function () {

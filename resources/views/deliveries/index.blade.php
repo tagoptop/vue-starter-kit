@@ -54,6 +54,19 @@
 
 <div class="card shadow-sm mb-4">
     <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <div>
+                <h5 class="mb-1">Customer Delivery Locations</h5>
+                <p class="text-muted mb-0">Mapped customer points from pinned delivery coordinates with customer name and address labels.</p>
+            </div>
+            <div class="small text-muted">{{ $customerLocations->count() }} mapped customer points</div>
+        </div>
+        <div id="customerLocationMap" aria-label="Customer delivery map"></div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
         <form method="GET" action="{{ route('deliveries.index') }}" class="row g-3 align-items-end">
             <div class="col-md-5">
                 <label for="search" class="form-label">Search</label>
@@ -448,10 +461,17 @@
 @endsection
 
 @push('styles')
+    <link href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/main.min.css" rel="stylesheet">
     <style>
         #deliveryCalendar {
             min-height: 600px;
+        }
+
+        #customerLocationMap {
+            min-height: 460px;
+            border-radius: 0.5rem;
+            border: 1px solid #e2e8f0;
         }
 
         #deliveryCalendar .fc .fc-daygrid-day-number {
@@ -542,9 +562,53 @@
 @endpush
 
 @push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            const customerLocationMapElement = document.getElementById('customerLocationMap');
+            const customerLocations = @json($customerLocations);
+
+            if (customerLocationMapElement && typeof L !== 'undefined') {
+                const escapeHtml = (value) => String(value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/\"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+
+                const defaultCenter = [12.8797, 121.7740];
+                const initialCenter = customerLocations.length > 0
+                    ? [customerLocations[0].latitude, customerLocations[0].longitude]
+                    : defaultCenter;
+
+                const customerMap = L.map(customerLocationMapElement).setView(initialCenter, customerLocations.length > 0 ? 11 : 6);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; OpenStreetMap contributors',
+                }).addTo(customerMap);
+
+                const bounds = [];
+
+                customerLocations.forEach((location) => {
+                    const marker = L.marker([location.latitude, location.longitude]).addTo(customerMap);
+                    bounds.push([location.latitude, location.longitude]);
+                    marker.bindPopup(
+                        `<div class="small">`
+                        + `<div><strong>${escapeHtml(location.customerName)}</strong></div>`
+                        + `<div>${escapeHtml(location.address)}</div>`
+                        + `<div class="text-muted">Order: ${escapeHtml(location.orderNumber)}</div>`
+                        + `<div class="text-muted">Scheduled: ${escapeHtml(location.scheduledFor)}</div>`
+                        + `</div>`
+                    );
+                });
+
+                if (bounds.length > 1) {
+                    customerMap.fitBounds(bounds, { padding: [24, 24] });
+                }
+            }
+
             const calendarElement = document.getElementById('deliveryCalendar');
 
             if (!calendarElement || typeof FullCalendar === 'undefined') {

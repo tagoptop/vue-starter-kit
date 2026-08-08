@@ -81,6 +81,37 @@ class OrderController extends Controller
             })
             ->values();
 
+        $customerLocations = (clone $baseQuery)
+            ->with('customer')
+            ->when(in_array($status, ['pending', 'approved', 'delivered'], true), function ($query) use ($status) {
+                $query->where('status', $status);
+            })
+            ->whereNotNull('delivery_latitude')
+            ->whereNotNull('delivery_longitude')
+            ->latest('updated_at')
+            ->limit(500)
+            ->get()
+            ->map(function (Order $order): array {
+                return [
+                    'id' => (int) $order->id,
+                    'orderNumber' => $order->order_number,
+                    'customerName' => $order->customer?->name ?? 'Unknown customer',
+                    'address' => $order->delivery_address ?: 'Not provided',
+                    'latitude' => (float) $order->delivery_latitude,
+                    'longitude' => (float) $order->delivery_longitude,
+                    'scheduledFor' => $order->scheduled_for?->format('M d, Y') ?? 'Not scheduled',
+                ];
+            })
+            ->unique(function (array $location): string {
+                return implode('|', [
+                    $location['customerName'],
+                    $location['address'],
+                    $location['latitude'],
+                    $location['longitude'],
+                ]);
+            })
+            ->values();
+
         $summary = [
             'pending' => (int) ($statusCounts['pending'] ?? 0),
             'approved' => (int) ($statusCounts['approved'] ?? 0),
@@ -92,7 +123,7 @@ class OrderController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'phone']);
 
-        return view('deliveries.index', compact('orders', 'status', 'search', 'summary', 'calendarEvents', 'drivers'));
+        return view('deliveries.index', compact('orders', 'status', 'search', 'summary', 'calendarEvents', 'customerLocations', 'drivers'));
     }
 
     public function index(Request $request): View|RedirectResponse
