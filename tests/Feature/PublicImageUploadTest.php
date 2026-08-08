@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Category;
+use App\Models\AppSetting;
 use App\Models\Product;
 use App\Models\Supplier;
 use App\Models\User;
@@ -9,7 +10,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
-    $this->originalBrandingConfig = file_get_contents(config_path('branding.php'));
     $this->publicStorageOriginallyExisted = file_exists(public_path('storage')) || is_link(public_path('storage'));
     $this->temporaryUploadPaths = [];
 });
@@ -27,9 +27,6 @@ afterEach(function () {
             app(Filesystem::class)->delete($mirroredPath);
         }
     }
-
-    file_put_contents(config_path('branding.php'), $this->originalBrandingConfig);
-    config(['branding' => require config_path('branding.php')]);
 
     $publicStoragePath = public_path('storage');
     if (! $this->publicStorageOriginallyExisted && is_link($publicStoragePath)) {
@@ -75,11 +72,11 @@ it('stores branding logos in a publicly accessible location', function () {
         ->assertRedirect(route('settings.branding'))
         ->assertSessionHas('status', 'Company branding updated successfully!');
 
-    $brandingConfig = require config_path('branding.php');
+    $logoUrl = AppSetting::query()->where('key', 'logo_url')->value('value');
 
-    expect($brandingConfig['logo_url'])->toStartWith('/storage/branding/');
+    expect($logoUrl)->toStartWith('/storage/branding/');
 
-    $this->brandingLogoPath = str_replace('/storage/', '', $brandingConfig['logo_url']);
+    $this->brandingLogoPath = str_replace('/storage/', '', $logoUrl);
 
     Storage::disk('public')->assertExists($this->brandingLogoPath);
     expect(file_exists(public_path('storage/' . $this->brandingLogoPath)))->toBeTrue();

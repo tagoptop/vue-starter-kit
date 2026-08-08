@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Concerns\HandlesPublicUploads;
+use App\Support\BrandingHelper;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
@@ -23,7 +24,7 @@ class CompanyBrandingController extends Controller
         }
 
         $logoUrl = $this->getVersionedLogoUrl();
-        $companyName = config('branding.company_name', 'Construction Supply');
+        $companyName = BrandingHelper::getCompanyName();
 
         return view('settings.branding', [
             'logoUrl' => $logoUrl,
@@ -53,19 +54,18 @@ class CompanyBrandingController extends Controller
             $logoUrl = '/storage/' . $path;
 
             // Delete old logo if it exists and is not the default
-            $oldLogo = config('branding.logo_url', '/logo.svg');
-            if ($oldLogo !== '/logo.svg' && str_contains($oldLogo, '/storage/')) {
+            $oldLogo = BrandingHelper::getLogoUrl();
+            if ($oldLogo !== BrandingHelper::DEFAULT_LOGO_URL && str_contains($oldLogo, '/storage/')) {
                 $oldPath = str_replace('/storage/', '', $oldLogo);
                 if (Storage::disk('public')->exists($oldPath)) {
                     $this->deletePublicUpload($oldPath);
                 }
             }
         } else {
-            $logoUrl = config('branding.logo_url', '/logo.svg');
+            $logoUrl = BrandingHelper::getLogoUrl();
         }
 
-        // Store settings in config file
-        $this->saveBrandingConfig($companyName, $logoUrl);
+        $this->saveBrandingSettings($companyName, $logoUrl);
 
         return redirect()->route('settings.branding')
             ->with('status', 'Company branding updated successfully!')
@@ -82,15 +82,15 @@ class CompanyBrandingController extends Controller
         }
 
         // Delete uploaded logo
-        $logo = config('branding.logo_url', '/logo.svg');
-        if ($logo !== '/logo.svg' && str_contains($logo, '/storage/')) {
+        $logo = BrandingHelper::getLogoUrl();
+        if ($logo !== BrandingHelper::DEFAULT_LOGO_URL && str_contains($logo, '/storage/')) {
             $path = str_replace('/storage/', '', $logo);
             if (Storage::disk('public')->exists($path)) {
                 $this->deletePublicUpload($path);
             }
         }
 
-        $this->saveBrandingConfig('Construction Supply', '/logo.svg');
+        $this->saveBrandingSettings(BrandingHelper::DEFAULT_COMPANY_NAME, BrandingHelper::DEFAULT_LOGO_URL);
 
         return redirect()->route('settings.branding')
             ->with('status', 'Company branding reset to defaults!')
@@ -100,26 +100,10 @@ class CompanyBrandingController extends Controller
     /**
      * Save branding configuration.
      */
-    private function saveBrandingConfig(string $companyName, string $logoUrl): void
+    private function saveBrandingSettings(string $companyName, string $logoUrl): void
     {
-        $configPath = config_path('branding.php');
-        $config = [
-            'company_name' => $companyName,
-            'logo_url' => $logoUrl,
-        ];
-
-        file_put_contents($configPath, '<?php return ' . var_export($config, true) . ';');
-
-        // Keep runtime config in sync for the current request cycle.
-        config([
-            'branding.company_name' => $companyName,
-            'branding.logo_url' => $logoUrl,
-        ]);
-
-        // If config was cached, rebuild it so new branding is loaded.
-        if (file_exists(base_path('bootstrap/cache/config.php'))) {
-            Artisan::call('config:cache');
-        }
+        BrandingHelper::set('company_name', $companyName);
+        BrandingHelper::set('logo_url', $logoUrl);
     }
 
     /**
@@ -127,7 +111,7 @@ class CompanyBrandingController extends Controller
      */
     private function getVersionedLogoUrl(): string
     {
-        $logoUrl = config('branding.logo_url', '/logo.svg');
+        $logoUrl = BrandingHelper::getLogoUrl();
 
         if (str_starts_with($logoUrl, '/storage/')) {
             $storagePath = storage_path('app/public/' . str_replace('/storage/', '', $logoUrl));
@@ -136,7 +120,7 @@ class CompanyBrandingController extends Controller
             }
         }
 
-        if ($logoUrl === '/logo.svg') {
+        if ($logoUrl === BrandingHelper::DEFAULT_LOGO_URL) {
             $defaultLogoPath = public_path('logo.svg');
             if (file_exists($defaultLogoPath)) {
                 return $logoUrl . '?v=' . filemtime($defaultLogoPath);

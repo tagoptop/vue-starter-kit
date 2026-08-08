@@ -13,21 +13,10 @@
     <div class="container-fluid">
         <a class="navbar-brand d-flex align-items-center gap-2" href="{{ route('dashboard') }}">
             @php
-                $brandingLogoUrl = config('branding.logo_url', '/logo.svg');
-                if (str_starts_with($brandingLogoUrl, '/storage/')) {
-                    $storageLogoPath = storage_path('app/public/' . str_replace('/storage/', '', $brandingLogoUrl));
-                    if (file_exists($storageLogoPath)) {
-                        $brandingLogoUrl .= '?v=' . filemtime($storageLogoPath);
-                    }
-                } elseif ($brandingLogoUrl === '/logo.svg') {
-                    $defaultLogoPath = public_path('logo.svg');
-                    if (file_exists($defaultLogoPath)) {
-                        $brandingLogoUrl .= '?v=' . filemtime($defaultLogoPath);
-                    }
-                }
+                $brandingLogoUrl = \App\Support\BrandingHelper::getVersionedLogoUrl();
             @endphp
             <img src="{{ $brandingLogoUrl }}" alt="CSMS Logo" height="40" class="d-inline-block">
-            <span class="fw-bold">{{ config('branding.company_name', 'Construction Supply') }}</span>
+            <span class="fw-bold">{{ \App\Support\BrandingHelper::getCompanyName() }}</span>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
