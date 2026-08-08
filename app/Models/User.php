@@ -55,6 +55,11 @@ class User extends Authenticatable
         return $this->hasMany(Order::class, 'customer_id');
     }
 
+    public function driverAssignments(): HasMany
+    {
+        return $this->hasMany(Order::class, 'driver_id');
+    }
+
     public function adminConversations(): HasMany
     {
         return $this->hasMany(Conversation::class, 'admin_id');

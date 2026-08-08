@@ -6,6 +6,7 @@ use App\Models\InventoryTransaction;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -86,11 +87,20 @@ class OrderController extends Controller
             'delivered' => (int) ($statusCounts['delivered'] ?? 0),
         ];
 
-        return view('deliveries.index', compact('orders', 'status', 'search', 'summary', 'calendarEvents'));
+        $drivers = User::query()
+            ->where('role', 'driver')
+            ->orderBy('name')
+            ->get(['id', 'name', 'phone']);
+
+        return view('deliveries.index', compact('orders', 'status', 'search', 'summary', 'calendarEvents', 'drivers'));
     }
 
-    public function index(Request $request): View
+    public function index(Request $request): View|RedirectResponse
     {
+        if ($request->user()->role === 'driver') {
+            return redirect()->route('driver.deliveries.index');
+        }
+
         $orders = Order::with(['customer', 'items.product'])
             ->when($request->user()->role === 'customer', function ($query) use ($request) {
                 $query->where('customer_id', $request->user()->id);
@@ -106,6 +116,7 @@ class OrderController extends Controller
         $search = trim((string) $request->input('search', ''));
 
         $deliveries = Order::with(['customer', 'items.product'])
+            ->where('driver_id', $request->user()->id)
             ->whereIn('status', ['pending', 'approved'])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($deliveryQuery) use ($search) {
@@ -314,6 +325,10 @@ class OrderController extends Controller
             abort(403);
         }
 
+        if ($request->user()->role === 'driver' && $order->driver_id !== $request->user()->id) {
+            abort(403);
+        }
+
         $order->load(['customer', 'items.product']);
 
         return view('orders.show', compact('order'));
@@ -326,6 +341,7 @@ class OrderController extends Controller
             'scheduled_for' => ['nullable', 'date'],
             'driver_name' => ['nullable', 'string', 'max:255'],
             'driver_phone' => ['nullable', 'string', 'max:30'],
+            'driver_id' => ['nullable', 'integer', 'exists:users,id'],
             'delivery_notes' => ['nullable', 'string'],
             'payment_method' => ['nullable', 'in:' . implode(',', self::PAYMENT_METHODS)],
             'payment_other_method' => ['nullable', 'string', 'max:80', 'required_if:payment_method,other'],
@@ -354,6 +370,29 @@ class OrderController extends Controller
 
         if ($request->has('driver_phone')) {
             $updates['driver_phone'] = $validated['driver_phone'] ?? null;
+        }
+
+        if ($request->has('driver_id')) {
+            $driverId = $validated['driver_id'] ?? null;
+
+            if ($driverId === null) {
+                $updates['driver_id'] = null;
+                $updates['driver_name'] = null;
+                $updates['driver_phone'] = null;
+            } else {
+                $driver = User::query()
+                    ->where('id', $driverId)
+                    ->where('role', 'driver')
+                    ->first();
+
+                if (! $driver) {
+                    return back()->withErrors(['driver_id' => 'Selected user is not a driver.']);
+                }
+
+                $updates['driver_id'] = $driver->id;
+                $updates['driver_name'] = $driver->name;
+                $updates['driver_phone'] = $driver->phone;
+            }
         }
 
         if ($request->has('delivery_notes')) {
@@ -416,6 +455,7 @@ class OrderController extends Controller
 
         $hasDeliveryUpdate = $request->hasAny([
             'delivery_notes',
+            'driver_id',
             'driver_name',
             'driver_phone',
             'scheduled_for',

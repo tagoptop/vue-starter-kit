@@ -40,6 +40,7 @@ it('allows staff to update delivery status and notes', function () {
     Storage::fake('public');
 
     $staff = User::factory()->create(['role' => 'staff']);
+    $driver = User::factory()->create(['role' => 'driver']);
     $customer = User::factory()->create(['role' => 'customer']);
 
     $order = Order::create([
@@ -57,8 +58,7 @@ it('allows staff to update delivery status and notes', function () {
         ->patch(route('orders.update-status', $order), [
             'status' => 'delivered',
             'delivery_notes' => 'Delivered to site foreman.',
-            'driver_name' => 'Rogelio Cruz',
-            'driver_phone' => '09171230000',
+            'driver_id' => $driver->id,
             'proof_of_delivery' => UploadedFile::fake()->create('pod.pdf', 120, 'application/pdf'),
         ]);
 
@@ -69,8 +69,9 @@ it('allows staff to update delivery status and notes', function () {
         ->status->toBe('delivered')
         ->notes->toBe('Initial customer request')
         ->delivery_notes->toBe('Delivered to site foreman.')
-        ->driver_name->toBe('Rogelio Cruz')
-        ->driver_phone->toBe('09171230000')
+        ->driver_id->toBe($driver->id)
+        ->driver_name->toBe($driver->name)
+        ->driver_phone->toBe($driver->phone)
         ->proof_of_delivery_path->not->toBeNull()
         ->delivered_at->not->toBeNull();
 
@@ -88,6 +89,7 @@ it('forbids customers from opening the delivery monitoring page', function () {
 
 it('allows drivers to see delivery items and delivery addresses', function () {
     $driver = User::factory()->create(['role' => 'driver']);
+    $otherDriver = User::factory()->create(['role' => 'driver']);
     $customer = User::factory()->create(['role' => 'customer']);
 
     $category = Category::create([
@@ -105,9 +107,19 @@ it('allows drivers to see delivery items and delivery addresses', function () {
     $order = Order::create([
         'order_number' => 'ORD-DRIVER-001',
         'customer_id' => $customer->id,
+        'driver_id' => $driver->id,
         'status' => 'approved',
         'total_amount' => 2500.00,
         'delivery_address' => 'Block 7, Lot 12, Green Valley, Davao',
+    ]);
+
+    $otherOrder = Order::create([
+        'order_number' => 'ORD-DRIVER-002',
+        'customer_id' => $customer->id,
+        'driver_id' => $otherDriver->id,
+        'status' => 'approved',
+        'total_amount' => 1700.00,
+        'delivery_address' => 'Phase 1, Riverside, Cagayan de Oro',
     ]);
 
     OrderItem::create([
@@ -126,6 +138,7 @@ it('allows drivers to see delivery items and delivery addresses', function () {
     $response->assertSee('My Deliveries');
     $response->assertSee('Washed Sand x 2');
     $response->assertSee('Block 7, Lot 12, Green Valley, Davao');
+    $response->assertDontSee($otherOrder->order_number);
 });
 
 it('forbids non-drivers from opening the driver deliveries page', function () {
@@ -134,5 +147,34 @@ it('forbids non-drivers from opening the driver deliveries page', function () {
     $this
         ->actingAs($staff)
         ->get(route('driver.deliveries.index'))
+        ->assertForbidden();
+});
+
+it('redirects drivers away from the general orders page', function () {
+    $driver = User::factory()->create(['role' => 'driver']);
+
+    $this
+        ->actingAs($driver)
+        ->get(route('orders.index'))
+        ->assertRedirect(route('driver.deliveries.index'));
+});
+
+it('forbids drivers from viewing orders assigned to another driver', function () {
+    $driver = User::factory()->create(['role' => 'driver']);
+    $otherDriver = User::factory()->create(['role' => 'driver']);
+    $customer = User::factory()->create(['role' => 'customer']);
+
+    $order = Order::create([
+        'order_number' => 'ORD-DRIVER-003',
+        'customer_id' => $customer->id,
+        'driver_id' => $otherDriver->id,
+        'status' => 'approved',
+        'total_amount' => 2000.00,
+        'delivery_address' => 'Purok 2, Butuan City',
+    ]);
+
+    $this
+        ->actingAs($driver)
+        ->get(route('orders.show', $order))
         ->assertForbidden();
 });

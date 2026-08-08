@@ -128,6 +128,7 @@
                                 data-items-count="{{ $boardOrder->items_count }}"
                                 data-scheduled-for="{{ $boardOrder->scheduled_for?->format('M d, Y') ?? 'Not scheduled' }}"
                                 data-scheduled-for-value="{{ $boardOrder->scheduled_for?->toDateString() ?? '' }}"
+                                data-driver-id="{{ $boardOrder->driver_id ?? '' }}"
                                 data-driver-name="{{ $boardOrder->driver_name ?? '' }}"
                                 data-driver-phone="{{ $boardOrder->driver_phone ?? '' }}"
                                 data-delivery-notes="{{ $boardOrder->delivery_notes ?? '' }}"
@@ -299,6 +300,18 @@
                                         class="form-control"
                                         value="{{ old('scheduled_for', $order->scheduled_for?->toDateString()) }}"
                                     >
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="driver-id-{{ $order->id }}" class="form-label">Assigned Driver Account</label>
+                                    <select id="driver-id-{{ $order->id }}" name="driver_id" class="form-select">
+                                        <option value="">No assigned driver</option>
+                                        @foreach($drivers as $driver)
+                                            <option value="{{ $driver->id }}" @selected((string) old('driver_id.' . $order->id, $order->driver_id) === (string) $driver->id)>
+                                                {{ $driver->name }}{{ $driver->phone ? ' (' . $driver->phone . ')' : '' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
                                 </div>
 
                                 <div class="mb-3">
@@ -688,6 +701,7 @@
                 formData.append('_method', 'PATCH');
                 formData.append('status', newStatus);
                 formData.append('scheduled_for', card.dataset.scheduledForValue || '');
+                formData.append('driver_id', card.dataset.driverId || '');
                 formData.append('driver_name', card.dataset.driverName || '');
                 formData.append('driver_phone', card.dataset.driverPhone || '');
                 formData.append('delivery_notes', card.dataset.deliveryNotes || '');
