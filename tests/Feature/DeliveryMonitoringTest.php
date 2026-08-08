@@ -179,3 +179,66 @@ it('forbids drivers from viewing orders assigned to another driver', function ()
         ->get(route('orders.show', $order))
         ->assertForbidden();
 });
+
+it('renders delivery receipt with plotted order items and address', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $customer = User::factory()->create(['role' => 'customer']);
+
+    $category = Category::create([
+        'name' => 'Blocks',
+        'description' => 'Concrete blocks',
+    ]);
+
+    $product = Product::create([
+        'category_id' => $category->id,
+        'name' => '4in CHB',
+        'price' => 22.00,
+        'stock_quantity' => 1000,
+    ]);
+
+    $order = Order::create([
+        'order_number' => 'ORD-RECEIPT-001',
+        'customer_id' => $customer->id,
+        'status' => 'approved',
+        'total_amount' => 220.00,
+        'delivery_address' => 'Sitio Malinis, Padre Garcia, Batangas',
+    ]);
+
+    OrderItem::create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'quantity' => 10,
+        'unit_price' => 22.00,
+        'subtotal' => 220.00,
+    ]);
+
+    $response = $this
+        ->actingAs($admin)
+        ->get(route('orders.receipt', $order));
+
+    $response->assertOk();
+    $response->assertSee('DELIVERY RECEIPT');
+    $response->assertSee('Sitio Malinis, Padre Garcia, Batangas');
+    $response->assertSee('4in CHB');
+    $response->assertSee('220.00');
+});
+
+it('forbids unassigned drivers from opening the order receipt', function () {
+    $driver = User::factory()->create(['role' => 'driver']);
+    $otherDriver = User::factory()->create(['role' => 'driver']);
+    $customer = User::factory()->create(['role' => 'customer']);
+
+    $order = Order::create([
+        'order_number' => 'ORD-RECEIPT-002',
+        'customer_id' => $customer->id,
+        'driver_id' => $otherDriver->id,
+        'status' => 'approved',
+        'total_amount' => 500.00,
+        'delivery_address' => 'Barangay Luntal, Taal, Batangas',
+    ]);
+
+    $this
+        ->actingAs($driver)
+        ->get(route('orders.receipt', $order))
+        ->assertForbidden();
+});

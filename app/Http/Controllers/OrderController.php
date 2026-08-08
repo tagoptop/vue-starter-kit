@@ -352,17 +352,22 @@ class OrderController extends Controller
 
     public function show(Order $order, Request $request): View
     {
-        if ($request->user()->role === 'customer' && $order->customer_id !== $request->user()->id) {
-            abort(403);
-        }
-
-        if ($request->user()->role === 'driver' && $order->driver_id !== $request->user()->id) {
-            abort(403);
-        }
+        $this->authorizeOrderAccess($request, $order);
 
         $order->load(['customer', 'items.product']);
 
         return view('orders.show', compact('order'));
+    }
+
+    public function deliveryReceipt(Order $order, Request $request): View
+    {
+        $this->authorizeOrderAccess($request, $order);
+
+        $order->load(['customer', 'items.product']);
+
+        $receiptNumber = str_pad((string) $order->id, 5, '0', STR_PAD_LEFT);
+
+        return view('orders.receipt', compact('order', 'receiptNumber'));
     }
 
     public function updateStatus(Request $request, Order $order): RedirectResponse
@@ -538,6 +543,17 @@ class OrderController extends Controller
     private function getCart(): array
     {
         return session('cart', []);
+    }
+
+    private function authorizeOrderAccess(Request $request, Order $order): void
+    {
+        if ($request->user()->role === 'customer' && $order->customer_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        if ($request->user()->role === 'driver' && $order->driver_id !== $request->user()->id) {
+            abort(403);
+        }
     }
 
     private function putCart(Request $request, array $cart): void

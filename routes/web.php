@@ -53,6 +53,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::get('orders/{order}', [OrderController::class, 'show'])->whereNumber('order')->name('orders.show');
+    Route::get('orders/{order}/receipt', [OrderController::class, 'deliveryReceipt'])->whereNumber('order')->name('orders.receipt');
 
     Route::middleware('role:admin')->group(function () {
         Route::resource('users', UserManagementController::class)->only(['index', 'edit', 'update']);

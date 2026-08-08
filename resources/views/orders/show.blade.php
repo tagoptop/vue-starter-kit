@@ -9,7 +9,10 @@
         ? $order->delivery_latitude . ',' . $order->delivery_longitude
         : ($order->delivery_address ? rawurlencode($order->delivery_address) : null);
 @endphp
-<h4 class="mb-3">Order Details</h4>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h4 class="mb-0">Order Details</h4>
+    <a href="{{ route('orders.receipt', $order) }}" class="btn btn-outline-dark">Delivery Receipt</a>
+</div>
 <div class="card shadow-sm mb-3">
     <div class="card-body">
         <p class="mb-1"><strong>Order Number:</strong> {{ $order->order_number }}</p>
