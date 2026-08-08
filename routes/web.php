@@ -33,6 +33,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('orders/cart/clear', [OrderController::class, 'clearCart'])->name('orders.cart.clear');
     });
 
+    Route::middleware('role:driver')->group(function () {
+        Route::get('driver/deliveries', [OrderController::class, 'driverDeliveries'])->name('driver.deliveries.index');
+    });
+
     Route::middleware('role:admin,staff')->group(function () {
         Route::resource('products', ProductController::class)->except(['show']);
         Route::resource('categories', CategoryController::class)->except(['show']);

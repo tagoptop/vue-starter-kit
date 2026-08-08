@@ -1,6 +1,9 @@
 <?php
 
 use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Product;
+use App\Models\Category;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -80,5 +83,56 @@ it('forbids customers from opening the delivery monitoring page', function () {
     $this
         ->actingAs($customer)
         ->get(route('deliveries.index'))
+        ->assertForbidden();
+});
+
+it('allows drivers to see delivery items and delivery addresses', function () {
+    $driver = User::factory()->create(['role' => 'driver']);
+    $customer = User::factory()->create(['role' => 'customer']);
+
+    $category = Category::create([
+        'name' => 'Aggregates',
+        'description' => 'Construction aggregate materials',
+    ]);
+
+    $product = Product::create([
+        'category_id' => $category->id,
+        'name' => 'Washed Sand',
+        'price' => 1250.00,
+        'stock_quantity' => 100,
+    ]);
+
+    $order = Order::create([
+        'order_number' => 'ORD-DRIVER-001',
+        'customer_id' => $customer->id,
+        'status' => 'approved',
+        'total_amount' => 2500.00,
+        'delivery_address' => 'Block 7, Lot 12, Green Valley, Davao',
+    ]);
+
+    OrderItem::create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'quantity' => 2,
+        'unit_price' => 1250.00,
+        'subtotal' => 2500.00,
+    ]);
+
+    $response = $this
+        ->actingAs($driver)
+        ->get(route('driver.deliveries.index'));
+
+    $response->assertOk();
+    $response->assertSee('My Deliveries');
+    $response->assertSee('Washed Sand x 2');
+    $response->assertSee('Block 7, Lot 12, Green Valley, Davao');
+});
+
+it('forbids non-drivers from opening the driver deliveries page', function () {
+    $staff = User::factory()->create(['role' => 'staff']);
+
+    $this
+        ->actingAs($staff)
+        ->get(route('driver.deliveries.index'))
         ->assertForbidden();
 });

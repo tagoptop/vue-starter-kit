@@ -101,6 +101,34 @@ class OrderController extends Controller
         return view('orders.index', compact('orders'));
     }
 
+    public function driverDeliveries(Request $request): View
+    {
+        $search = trim((string) $request->input('search', ''));
+
+        $deliveries = Order::with(['customer', 'items.product'])
+            ->whereIn('status', ['pending', 'approved'])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($deliveryQuery) use ($search) {
+                    $deliveryQuery
+                        ->where('order_number', 'like', "%{$search}%")
+                        ->orWhere('delivery_address', 'like', "%{$search}%")
+                        ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                            $customerQuery->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('items.product', function ($productQuery) use ($search) {
+                            $productQuery->where('name', 'like', "%{$search}%");
+                        });
+                });
+            })
+            ->orderByRaw("case status when 'approved' then 1 when 'pending' then 2 else 3 end")
+            ->orderBy('scheduled_for')
+            ->latest('updated_at')
+            ->paginate(12)
+            ->withQueryString();
+
+        return view('deliveries.driver', compact('deliveries', 'search'));
+    }
+
     public function create(): View
     {
         $products = Product::with(['category', 'supplier'])->orderBy('name')->get();

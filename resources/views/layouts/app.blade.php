@@ -42,6 +42,9 @@
                     <li class="nav-item"><a class="nav-link" href="{{ route('inventory.index') }}">Inventory</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ route('deliveries.index') }}">Deliveries</a></li>
                 @endif
+                @if(auth()->check() && auth()->user()->role === 'driver')
+                    <li class="nav-item"><a class="nav-link" href="{{ route('driver.deliveries.index') }}">My Deliveries</a></li>
+                @endif
                 @if(auth()->check())
                     <li class="nav-item"><a class="nav-link" href="{{ route('conversations.index') }}">Messages</a></li>
                 @endif
