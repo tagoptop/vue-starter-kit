@@ -119,3 +119,87 @@ it('forbids checker from warehouse page and warehouseman from checker page', fun
         ->get(route('checker.spot-checks'))
         ->assertForbidden();
 });
+
+it('allows warehouseman to mark an order item as prepared', function () {
+    $warehouseman = User::factory()->create(['role' => 'warehouseman']);
+    $customer = User::factory()->create(['role' => 'customer']);
+
+    $category = Category::create([
+        'name' => 'Mark Prepared Category',
+        'description' => 'Mark prepared category',
+    ]);
+
+    $product = Product::create([
+        'category_id' => $category->id,
+        'name' => '10mm Rebar',
+        'price' => 350.00,
+        'stock_quantity' => 500,
+    ]);
+
+    $order = Order::create([
+        'order_number' => 'ORD-WH-002',
+        'customer_id' => $customer->id,
+        'status' => 'approved',
+        'total_amount' => 700.00,
+        'delivery_address' => 'Lipa City, Batangas',
+    ]);
+
+    $item = OrderItem::create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'quantity' => 2,
+        'unit_price' => 350.00,
+        'subtotal' => 700.00,
+    ]);
+
+    $response = $this
+        ->actingAs($warehouseman)
+        ->patch(route('warehouse.preparation.items.mark-prepared', $item));
+
+    $response
+        ->assertRedirect()
+        ->assertSessionHas('success', 'Item marked as prepared.');
+
+    $this->assertDatabaseHas('order_items', [
+        'id' => $item->id,
+        'is_prepared' => 1,
+    ]);
+});
+
+it('forbids non-warehouseman from marking an order item as prepared', function () {
+    $checker = User::factory()->create(['role' => 'checker']);
+    $customer = User::factory()->create(['role' => 'customer']);
+
+    $category = Category::create([
+        'name' => 'Prepared Access Category',
+        'description' => 'Prepared access category',
+    ]);
+
+    $product = Product::create([
+        'category_id' => $category->id,
+        'name' => 'Hollow Blocks',
+        'price' => 18.00,
+        'stock_quantity' => 1000,
+    ]);
+
+    $order = Order::create([
+        'order_number' => 'ORD-WH-003',
+        'customer_id' => $customer->id,
+        'status' => 'approved',
+        'total_amount' => 180.00,
+        'delivery_address' => 'Sto. Tomas, Batangas',
+    ]);
+
+    $item = OrderItem::create([
+        'order_id' => $order->id,
+        'product_id' => $product->id,
+        'quantity' => 10,
+        'unit_price' => 18.00,
+        'subtotal' => 180.00,
+    ]);
+
+    $this
+        ->actingAs($checker)
+        ->patch(route('warehouse.preparation.items.mark-prepared', $item))
+        ->assertForbidden();
+});

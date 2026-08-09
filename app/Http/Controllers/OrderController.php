@@ -335,6 +335,21 @@ class OrderController extends Controller
         return view('operations.checker-spot-checks', compact('orders', 'search', 'summary'));
     }
 
+    public function markWarehouseItemPrepared(Request $request, OrderItem $orderItem): RedirectResponse
+    {
+        if (! in_array($orderItem->order?->status, ['pending', 'approved'], true)) {
+            return back()->withErrors(['prepared' => 'Only pending or approved order items can be marked as prepared.']);
+        }
+
+        if (! $orderItem->is_prepared) {
+            $orderItem->update([
+                'is_prepared' => true,
+            ]);
+        }
+
+        return back()->with('success', 'Item marked as prepared.');
+    }
+
     public function create(): View
     {
         $products = Product::with(['category', 'supplier'])->orderBy('name')->get();

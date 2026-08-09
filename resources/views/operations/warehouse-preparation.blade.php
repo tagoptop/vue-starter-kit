@@ -88,20 +88,32 @@
                                     <th>Item</th>
                                     <th class="text-end">Qty to Prepare</th>
                                     <th class="text-center">Prepared Mark</th>
+                                    <th class="text-center">Action</th>
                                     <th class="text-end">Unit Price</th>
                                     <th class="text-end">Subtotal</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($order->items as $item)
-                                    <tr class="{{ $order->status === 'approved' ? 'table-success' : '' }}">
+                                    <tr class="{{ $item->is_prepared ? 'table-success' : '' }}">
                                         <td>{{ $item->product?->name ?? 'Unknown item' }}</td>
                                         <td class="text-end">{{ $item->quantity }}</td>
                                         <td class="text-center">
-                                            @if($order->status === 'approved')
+                                            @if($item->is_prepared)
                                                 <span class="badge bg-success">Prepared</span>
                                             @else
                                                 <span class="badge bg-secondary">Pending</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-center">
+                                            @if(! $item->is_prepared)
+                                                <form method="POST" action="{{ route('warehouse.preparation.items.mark-prepared', $item) }}">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <button type="submit" class="btn btn-sm btn-outline-success">Mark Prepared</button>
+                                                </form>
+                                            @else
+                                                <span class="text-muted small">Marked</span>
                                             @endif
                                         </td>
                                         <td class="text-end">₱{{ number_format((float) $item->unit_price, 2) }}</td>

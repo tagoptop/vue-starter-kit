@@ -14,9 +14,17 @@ class OrderItem extends Model
         'order_id',
         'product_id',
         'quantity',
+        'is_prepared',
         'unit_price',
         'subtotal',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_prepared' => 'boolean',
+        ];
+    }
 
     public function order(): BelongsTo
     {

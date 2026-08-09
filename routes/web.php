@@ -41,6 +41,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::middleware('role:warehouseman')->group(function () {
         Route::get('warehouse/preparation', [OrderController::class, 'warehousePreparation'])->name('warehouse.preparation');
+        Route::patch('warehouse/preparation/items/{orderItem}/mark-prepared', [OrderController::class, 'markWarehouseItemPrepared'])
+            ->whereNumber('orderItem')
+            ->name('warehouse.preparation.items.mark-prepared');
     });
 
     Route::middleware('role:checker')->group(function () {
