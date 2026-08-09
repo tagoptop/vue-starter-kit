@@ -211,10 +211,36 @@
                         <div class="mb-3 border rounded p-3 bg-light-subtle">
                             <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
                                 <div>
-                                    <div class="fw-semibold">Location Pin</div>
-                                    <div class="small text-muted">Optional: use device GPS or manually set your desired pin location.</div>
+                                    <div class="fw-semibold">Location Pin (Manual First)</div>
+                                    <div class="small text-muted">No GPS needed: search your address, then click the exact location on the map to drop your pin.</div>
                                 </div>
-                                <button type="button" class="btn btn-outline-primary btn-sm" id="useCurrentLocationBtn">Use Current Location</button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="useCurrentLocationBtn">Use Device GPS Instead</button>
+                            </div>
+
+                            <div class="row g-2 mb-2">
+                                <div class="col-12 col-md-9">
+                                    <input
+                                        type="text"
+                                        id="manualAddressSearch"
+                                        class="form-control form-control-sm"
+                                        placeholder="Search address or landmark (e.g. Padre Garcia, Batangas)"
+                                    >
+                                </div>
+                                <div class="col-12 col-md-3 d-grid">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="findAddressBtn">Find on Map</button>
+                                </div>
+                            </div>
+
+                            <div
+                                id="manualPinMap"
+                                class="rounded border mb-2"
+                                style="height: 250px;"
+                                role="application"
+                                aria-label="Manual location pin map"
+                            ></div>
+
+                            <div class="small text-muted mb-2">
+                                Tip: tap or click anywhere on the map to set your delivery pin.
                             </div>
 
                             <div class="row g-2 mb-2">
@@ -230,6 +256,7 @@
                                         class="form-control form-control-sm"
                                         placeholder="e.g. 14.599512"
                                         value="{{ old('delivery_latitude') }}"
+                                        inputmode="decimal"
                                     >
                                 </div>
                                 <div class="col-12 col-md-6">
@@ -244,12 +271,12 @@
                                         class="form-control form-control-sm"
                                         placeholder="e.g. 120.984222"
                                         value="{{ old('delivery_longitude') }}"
+                                        inputmode="decimal"
                                     >
                                 </div>
                             </div>
 
                             <div class="d-flex gap-2 mb-2">
-                                <button type="button" class="btn btn-outline-secondary btn-sm" id="applyManualPinBtn">Apply Manual Pin</button>
                                 <button type="button" class="btn btn-outline-danger btn-sm" id="clearPinBtn">Clear Pin</button>
                             </div>
 
@@ -360,7 +387,26 @@
 </div>
 @endsection
 
+@push('styles')
+<link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+/>
+<style>
+    #manualPinMap {
+        min-height: 250px;
+    }
+</style>
+@endpush
+
 @push('scripts')
+<script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const locationButton = document.getElementById('useCurrentLocationBtn');
@@ -368,12 +414,16 @@
         const longitudeInput = document.getElementById('delivery_longitude');
         const locationStatus = document.getElementById('locationStatus');
         const previewMapLink = document.getElementById('previewMapLink');
-        const applyManualPinBtn = document.getElementById('applyManualPinBtn');
+        const manualAddressSearch = document.getElementById('manualAddressSearch');
+        const findAddressBtn = document.getElementById('findAddressBtn');
+        const manualPinMap = document.getElementById('manualPinMap');
         const clearPinBtn = document.getElementById('clearPinBtn');
         const discountInput = document.getElementById('discount_amount');
         const discountPreview = document.getElementById('discountPreview');
         const finalTotalPreview = document.getElementById('finalTotalPreview');
         const subtotalAmount = {{ number_format((float) $cartSubtotal, 2, '.', '') }};
+        let map = null;
+        let marker = null;
 
         function getCleanCoordinate(value) {
             if (value === '' || value === null || value === undefined) {
@@ -398,20 +448,104 @@
             previewMapLink.classList.add('d-none');
         }
 
-        function applyManualPin() {
-            const latitude = getCleanCoordinate(latitudeInput.value);
-            const longitude = getCleanCoordinate(longitudeInput.value);
+        function setPin(latitude, longitude, shouldCenterMap = true) {
+            const cleanLatitude = getCleanCoordinate(latitude);
+            const cleanLongitude = getCleanCoordinate(longitude);
 
-            if (! latitude || ! longitude) {
-                locationStatus.textContent = 'Enter both latitude and longitude to set a manual pin.';
-                previewMapLink.href = '#';
-                previewMapLink.classList.add('d-none');
+            if (! cleanLatitude || ! cleanLongitude) {
+                updateLocationPreview(null, null);
                 return;
             }
 
-            latitudeInput.value = latitude;
-            longitudeInput.value = longitude;
-            updateLocationPreview(latitude, longitude);
+            latitudeInput.value = cleanLatitude;
+            longitudeInput.value = cleanLongitude;
+            updateLocationPreview(cleanLatitude, cleanLongitude);
+
+            if (map) {
+                const latLng = [Number.parseFloat(cleanLatitude), Number.parseFloat(cleanLongitude)];
+
+                if (! marker) {
+                    marker = L.marker(latLng).addTo(map);
+                } else {
+                    marker.setLatLng(latLng);
+                }
+
+                if (shouldCenterMap) {
+                    map.setView(latLng, Math.max(map.getZoom(), 15));
+                }
+            }
+        }
+
+        function clearPin() {
+            latitudeInput.value = '';
+            longitudeInput.value = '';
+            updateLocationPreview(null, null);
+
+            if (map && marker) {
+                map.removeLayer(marker);
+                marker = null;
+            }
+        }
+
+        async function searchAddressOnMap() {
+            const query = (manualAddressSearch?.value || '').trim();
+
+            if (! query) {
+                locationStatus.textContent = 'Type an address or landmark first.';
+                return;
+            }
+
+            locationStatus.textContent = 'Searching address on map...';
+
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`);
+
+                if (! response.ok) {
+                    throw new Error('Search request failed.');
+                }
+
+                const results = await response.json();
+
+                if (! Array.isArray(results) || results.length === 0) {
+                    locationStatus.textContent = 'No map result found. Try a more specific address.';
+                    return;
+                }
+
+                const bestMatch = results[0];
+                setPin(bestMatch.lat, bestMatch.lon, true);
+                locationStatus.textContent = 'Address found. You can still click the map to fine-tune the pin.';
+            } catch {
+                locationStatus.textContent = 'Unable to search right now. You can still pin manually by clicking the map.';
+            }
+        }
+
+        function initializeManualPinMap() {
+            if (! manualPinMap || typeof L === 'undefined') {
+                return;
+            }
+
+            const initialLatitude = getCleanCoordinate(latitudeInput.value) ?? '14.5995123';
+            const initialLongitude = getCleanCoordinate(longitudeInput.value) ?? '120.9842195';
+            const hasInitialPin = Boolean(getCleanCoordinate(latitudeInput.value) && getCleanCoordinate(longitudeInput.value));
+
+            map = L.map(manualPinMap).setView(
+                [Number.parseFloat(initialLatitude), Number.parseFloat(initialLongitude)],
+                hasInitialPin ? 15 : 11
+            );
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap contributors',
+            }).addTo(map);
+
+            map.on('click', function (event) {
+                setPin(event.latlng.lat, event.latlng.lng, false);
+                locationStatus.textContent = 'Pin dropped. You can adjust by clicking another point on the map.';
+            });
+
+            if (hasInitialPin) {
+                setPin(initialLatitude, initialLongitude, false);
+            }
         }
 
         function updateDiscountPreview() {
@@ -436,17 +570,26 @@
 
         updateLocationPreview(latitudeInput.value, longitudeInput.value);
         updateDiscountPreview();
+        initializeManualPinMap();
 
-        applyManualPinBtn?.addEventListener('click', applyManualPin);
+        clearPinBtn?.addEventListener('click', clearPin);
 
-        clearPinBtn?.addEventListener('click', function () {
-            latitudeInput.value = '';
-            longitudeInput.value = '';
-            updateLocationPreview(null, null);
+        findAddressBtn?.addEventListener('click', searchAddressOnMap);
+        manualAddressSearch?.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                searchAddressOnMap();
+            }
         });
 
-        latitudeInput?.addEventListener('change', applyManualPin);
-        longitudeInput?.addEventListener('change', applyManualPin);
+        latitudeInput?.addEventListener('change', function () {
+            setPin(latitudeInput.value, longitudeInput.value, false);
+        });
+
+        longitudeInput?.addEventListener('change', function () {
+            setPin(latitudeInput.value, longitudeInput.value, false);
+        });
+
         discountInput?.addEventListener('input', updateDiscountPreview);
         discountInput?.addEventListener('change', updateDiscountPreview);
 
@@ -463,9 +606,8 @@
                     const latitude = position.coords.latitude.toFixed(7);
                     const longitude = position.coords.longitude.toFixed(7);
 
-                    latitudeInput.value = latitude;
-                    longitudeInput.value = longitude;
-                    updateLocationPreview(latitude, longitude);
+                    setPin(latitude, longitude, true);
+                    locationStatus.textContent = 'Current GPS location pinned. You can still adjust by clicking the map.';
                 },
                 function () {
                     locationStatus.textContent = 'Unable to get your current location. Please allow location access and try again.';
