@@ -11,9 +11,16 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserManagementController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/dashboard')->name('home');
+Route::get('/', function (Request $request) {
+    if (! $request->user()) {
+        return redirect()->route('login');
+    }
+
+    return redirect()->route($request->user()->homeRouteName());
+})->name('home');
 
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', [ConstructionDashboardController::class, 'index'])

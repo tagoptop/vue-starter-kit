@@ -84,4 +84,15 @@ class User extends Authenticatable
     {
         return in_array($this->role, $roles, true);
     }
+
+    public function homeRouteName(): string
+    {
+        return match ($this->role) {
+            'customer' => 'orders.index',
+            'driver' => 'driver.deliveries.index',
+            'warehouseman' => 'warehouse.preparation',
+            'checker' => 'checker.spot-checks',
+            default => 'dashboard',
+        };
+    }
 }
