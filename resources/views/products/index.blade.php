@@ -6,6 +6,54 @@
     <a href="{{ route('products.create') }}" class="btn btn-primary">Add Product</a>
 </div>
 
+<div class="card shadow-sm mb-3">
+    <div class="card-body">
+        <form method="GET" action="{{ route('products.index') }}" class="row g-2">
+            <div class="col-12 col-md-4">
+                <input
+                    type="text"
+                    name="search"
+                    class="form-control"
+                    value="{{ $search }}"
+                    placeholder="Search by name, description, category, or supplier"
+                >
+            </div>
+            <div class="col-12 col-md-3">
+                <select name="category_id" class="form-select">
+                    <option value="">All Categories</option>
+                    @foreach($categories as $category)
+                        <option value="{{ $category->id }}" @selected($categoryId === $category->id)>
+                            {{ $category->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12 col-md-3">
+                <select name="supplier_id" class="form-select">
+                    <option value="">All Suppliers</option>
+                    @foreach($suppliers as $supplier)
+                        <option value="{{ $supplier->id }}" @selected($supplierId === $supplier->id)>
+                            {{ $supplier->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12 col-md-2">
+                <select name="stock" class="form-select">
+                    <option value="">All Stock</option>
+                    <option value="in_stock" @selected($stock === 'in_stock')>In Stock</option>
+                    <option value="low_stock" @selected($stock === 'low_stock')>Low Stock</option>
+                    <option value="out_of_stock" @selected($stock === 'out_of_stock')>Out of Stock</option>
+                </select>
+            </div>
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Filter</button>
+                <a href="{{ route('products.index') }}" class="btn btn-outline-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="card shadow-sm">
     <div class="table-responsive">
         <table class="table table-striped mb-0">

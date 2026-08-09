@@ -16,11 +16,57 @@ class ProductController extends Controller
 {
     use HandlesPublicUploads;
 
-    public function index(): View
+    public function index(Request $request): View
     {
-        $products = Product::with(['category', 'supplier'])->latest()->paginate(10);
+        $search = trim((string) $request->input('search', ''));
+        $categoryId = $request->integer('category_id');
+        $supplierId = $request->integer('supplier_id');
+        $stock = $request->input('stock');
 
-        return view('products.index', compact('products'));
+        $products = Product::query()
+            ->with(['category', 'supplier'])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($productQuery) use ($search) {
+                    $productQuery
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhereHas('category', function ($categoryQuery) use ($search) {
+                            $categoryQuery->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('supplier', function ($supplierQuery) use ($search) {
+                            $supplierQuery->where('name', 'like', "%{$search}%");
+                        });
+                });
+            })
+            ->when($categoryId > 0, function ($query) use ($categoryId) {
+                $query->where('category_id', $categoryId);
+            })
+            ->when($supplierId > 0, function ($query) use ($supplierId) {
+                $query->where('supplier_id', $supplierId);
+            })
+            ->when(in_array($stock, ['in_stock', 'low_stock', 'out_of_stock'], true), function ($query) use ($stock) {
+                if ($stock === 'in_stock') {
+                    $query->whereColumn('stock_quantity', '>', 'low_stock_threshold');
+                }
+
+                if ($stock === 'low_stock') {
+                    $query
+                        ->where('stock_quantity', '>', 0)
+                        ->whereColumn('stock_quantity', '<=', 'low_stock_threshold');
+                }
+
+                if ($stock === 'out_of_stock') {
+                    $query->where('stock_quantity', '<=', 0);
+                }
+            })
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        $categories = Category::orderBy('name')->get(['id', 'name']);
+        $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
+
+        return view('products.index', compact('products', 'categories', 'suppliers', 'search', 'categoryId', 'supplierId', 'stock'));
     }
 
     public function create(): View
