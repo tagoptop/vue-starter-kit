@@ -43,6 +43,11 @@ class Product extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function salesPrices(): HasMany
+    {
+        return $this->hasMany(SalesPrice::class);
+    }
+
     public function isLowStock(): bool
     {
         return $this->stock_quantity <= $this->low_stock_threshold;

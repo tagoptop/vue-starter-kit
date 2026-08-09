@@ -6,7 +6,9 @@ use App\Models\InventoryTransaction;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\SalesPrice;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -372,6 +374,8 @@ class OrderController extends Controller
 
     public function updateStatus(Request $request, Order $order): RedirectResponse
     {
+        $originalStatus = $order->status;
+
         $validated = $request->validate([
             'status' => ['required', 'in:pending,approved,delivered'],
             'scheduled_for' => ['nullable', 'date'],
@@ -489,6 +493,10 @@ class OrderController extends Controller
 
         $order->update($updates);
 
+        if ($originalStatus !== 'approved' && $validated['status'] === 'approved') {
+            $this->createSalesPriceHistoryFromApprovedOrder($order->fresh('items'));
+        }
+
         $hasDeliveryUpdate = $request->hasAny([
             'delivery_notes',
             'driver_id',
@@ -559,5 +567,49 @@ class OrderController extends Controller
     private function putCart(Request $request, array $cart): void
     {
         $request->session()->put('cart', $cart);
+    }
+
+    private function createSalesPriceHistoryFromApprovedOrder(Order $order): void
+    {
+        $effectiveFrom = $order->created_at instanceof Carbon
+            ? $order->created_at->toDateString()
+            : now()->toDateString();
+
+        foreach ($order->items as $item) {
+            $latestPrice = SalesPrice::query()
+                ->where('product_id', $item->product_id)
+                ->whereNull('effective_to')
+                ->orderByDesc('effective_from')
+                ->orderByDesc('id')
+                ->first();
+
+            $newPrice = (float) $item->unit_price;
+
+            if ($latestPrice && (float) $latestPrice->price === $newPrice) {
+                continue;
+            }
+
+            if ($latestPrice && $latestPrice->effective_from?->toDateString() === $effectiveFrom) {
+                $latestPrice->update([
+                    'order_id' => $order->id,
+                    'price' => $newPrice,
+                ]);
+
+                continue;
+            }
+
+            if ($latestPrice) {
+                $latestPrice->update([
+                    'effective_to' => Carbon::parse($effectiveFrom)->subDay()->toDateString(),
+                ]);
+            }
+
+            SalesPrice::create([
+                'product_id' => $item->product_id,
+                'order_id' => $order->id,
+                'price' => $newPrice,
+                'effective_from' => $effectiveFrom,
+            ]);
+        }
     }
 }
