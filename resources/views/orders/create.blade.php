@@ -19,7 +19,7 @@
 
 <div class="row g-4 align-items-start">
     <div class="col-lg-8">
-        <div class="card shadow-sm border-0 mb-4">
+        <div class="card shadow-sm border-0 mb-4 order-catalog-shell">
             <div class="card-body">
                 <ul class="nav nav-pills flex-wrap gap-2" id="categoryTabs" role="tablist">
                     @foreach($groupedProducts as $categoryName => $categoryProducts)
@@ -44,7 +44,7 @@
             </div>
         </div>
 
-        <div class="tab-content" id="categoryTabsContent">
+        <div class="tab-content order-section order-section-catalog rounded-3 p-3 p-md-4" id="categoryTabsContent">
             @foreach($groupedProducts as $categoryName => $categoryProducts)
                 @php $slug = Illuminate\Support\Str::slug($categoryName); @endphp
                 <div
@@ -134,7 +134,7 @@
                         <p class="mb-0">Your cart is empty. Add materials to start an order.</p>
                     </div>
                 @else
-                    <div class="d-flex flex-column gap-3 mb-3">
+                    <div class="d-flex flex-column gap-3 mb-3 order-section order-section-cart rounded-3 p-3">
                         @foreach($groupedCart as $categoryName => $cartItems)
                             <div>
                                 <div class="d-flex justify-content-between align-items-center mb-2">
@@ -175,7 +175,7 @@
                         @endforeach
                     </div>
 
-                    <div class="border-top pt-3 mb-3">
+                    <div class="border-top pt-3 mb-3 order-section order-section-summary rounded-3 p-3">
                         <div class="d-flex justify-content-between mb-2">
                             <span>Items</span>
                             <strong>{{ $cartCount }}</strong>
@@ -196,7 +196,7 @@
 
                     <form method="POST" action="{{ route('orders.store') }}">
                         @csrf
-                        <div class="mb-3">
+                        <div class="mb-3 order-section order-section-address rounded-3 p-3">
                             <label class="form-label">Delivery Address</label>
                             <textarea
                                 name="delivery_address"
@@ -208,7 +208,7 @@
                             <div class="form-text">You can change this address every time you place a new order.</div>
                         </div>
 
-                        <div class="mb-3 border rounded p-3 bg-light-subtle">
+                        <div class="mb-3 border rounded p-3 order-section order-section-location">
                             <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
                                 <div>
                                     <div class="fw-semibold">Location Pin (Manual First)</div>
@@ -299,7 +299,7 @@
                             </a>
                         </div>
 
-                        <div class="mb-3">
+                        <div class="mb-3 order-section order-section-schedule rounded-3 p-3">
                             <label class="form-label" for="scheduled_for">Requested Delivery Date</label>
                             <input
                                 type="date"
@@ -312,7 +312,7 @@
                             <div class="form-text">Optional: this date appears in the delivery calendar for scheduling.</div>
                         </div>
 
-                        <div class="mb-3">
+                        <div class="mb-3 order-section order-section-payment rounded-3 p-3">
                             <label class="form-label" for="payment_method">Transaction Method</label>
                             <select id="payment_method" name="payment_method" class="form-select" required>
                                 <option value="cash" @selected(old('payment_method') === 'cash')>Cash</option>
@@ -325,7 +325,7 @@
                             </select>
                         </div>
 
-                        <div class="mb-3">
+                        <div class="mb-3 order-section order-section-payment rounded-3 p-3">
                             <label class="form-label" for="payment_other_method">Other Transaction Method (if Other)</label>
                             <input
                                 type="text"
@@ -338,7 +338,7 @@
                             >
                         </div>
 
-                        <div class="mb-3">
+                        <div class="mb-3 order-section order-section-payment rounded-3 p-3">
                             <label class="form-label" for="payment_reference">Payment Reference (optional)</label>
                             <input
                                 type="text"
@@ -351,7 +351,7 @@
                             >
                         </div>
 
-                        <div class="mb-3">
+                        <div class="mb-3 order-section order-section-pricing rounded-3 p-3">
                             <label class="form-label" for="discount_amount">Discount Amount (optional)</label>
                             <input
                                 type="number"
@@ -367,12 +367,12 @@
                             <div class="form-text">Discount cannot be greater than the cart subtotal.</div>
                         </div>
 
-                        <div class="mb-3">
+                        <div class="mb-3 order-section order-section-payment rounded-3 p-3">
                             <label class="form-label" for="payment_notes">Payment Notes (optional)</label>
                             <textarea id="payment_notes" name="payment_notes" class="form-control" rows="2" placeholder="Any remarks for this transaction">{{ old('payment_notes') }}</textarea>
                         </div>
 
-                        <div class="mb-3">
+                        <div class="mb-3 order-section order-section-notes rounded-3 p-3">
                             <label class="form-label">Customer Notes</label>
                             <textarea name="notes" class="form-control" rows="3" placeholder="Requests, site reminders, or project reference">{{ old('notes') }}</textarea>
                         </div>
@@ -395,6 +395,50 @@
     crossorigin=""
 />
 <style>
+    .order-catalog-shell {
+        background: color-mix(in srgb, var(--bs-body-bg) 85%, var(--bs-primary-bg-subtle) 15%);
+    }
+
+    .order-section {
+        border: 1px solid var(--bs-border-color-translucent);
+    }
+
+    .order-section-catalog {
+        background: color-mix(in srgb, var(--bs-body-bg) 88%, var(--bs-info-bg-subtle) 12%);
+    }
+
+    .order-section-cart {
+        background: color-mix(in srgb, var(--bs-body-bg) 90%, var(--bs-secondary-bg-subtle) 10%);
+    }
+
+    .order-section-summary {
+        background: color-mix(in srgb, var(--bs-body-bg) 86%, var(--bs-success-bg-subtle) 14%);
+    }
+
+    .order-section-address {
+        background: color-mix(in srgb, var(--bs-body-bg) 90%, var(--bs-primary-bg-subtle) 10%);
+    }
+
+    .order-section-location {
+        background: color-mix(in srgb, var(--bs-body-bg) 82%, var(--bs-warning-bg-subtle) 18%);
+    }
+
+    .order-section-schedule {
+        background: color-mix(in srgb, var(--bs-body-bg) 90%, var(--bs-info-bg-subtle) 10%);
+    }
+
+    .order-section-payment {
+        background: color-mix(in srgb, var(--bs-body-bg) 90%, var(--bs-secondary-bg-subtle) 10%);
+    }
+
+    .order-section-pricing {
+        background: color-mix(in srgb, var(--bs-body-bg) 86%, var(--bs-success-bg-subtle) 14%);
+    }
+
+    .order-section-notes {
+        background: color-mix(in srgb, var(--bs-body-bg) 92%, var(--bs-primary-bg-subtle) 8%);
+    }
+
     #manualPinMap {
         min-height: 250px;
     }
