@@ -568,8 +568,10 @@
                 return;
             }
 
-            const initialLatitude = getCleanCoordinate(latitudeInput.value) ?? '14.5995123';
-            const initialLongitude = getCleanCoordinate(longitudeInput.value) ?? '120.9842195';
+            const defaultPadreGarciaLatitude = '13.8799350';
+            const defaultPadreGarciaLongitude = '121.2138880';
+            const initialLatitude = getCleanCoordinate(latitudeInput.value) ?? defaultPadreGarciaLatitude;
+            const initialLongitude = getCleanCoordinate(longitudeInput.value) ?? defaultPadreGarciaLongitude;
             const hasInitialPin = Boolean(getCleanCoordinate(latitudeInput.value) && getCleanCoordinate(longitudeInput.value));
 
             map = L.map(manualPinMap).setView(
@@ -589,6 +591,9 @@
 
             if (hasInitialPin) {
                 setPin(initialLatitude, initialLongitude, false);
+            } else {
+                setPin(defaultPadreGarciaLatitude, defaultPadreGarciaLongitude, false);
+                locationStatus.textContent = 'Default pin set to Padre Garcia, Batangas. You can move it by clicking the map.';
             }
         }
 
