@@ -341,13 +341,26 @@ class OrderController extends Controller
             return back()->withErrors(['prepared' => 'Only pending or approved order items can be marked as prepared.']);
         }
 
+        $wasPrepared = (bool) $orderItem->is_prepared;
+
         if (! $orderItem->is_prepared) {
             $orderItem->update([
                 'is_prepared' => true,
             ]);
         }
 
-        return back()->with('success', 'Item marked as prepared.');
+        $remainingUnpreparedItems = OrderItem::query()
+            ->where('order_id', $orderItem->order_id)
+            ->where('is_prepared', false)
+            ->count();
+
+        $message = $remainingUnpreparedItems === 0
+            ? 'All items are already prepared.'
+            : ($wasPrepared ? 'Item is already prepared.' : 'Item marked as prepared.');
+
+        return back()
+            ->with('success', $message)
+            ->with('prepared_item_id', $orderItem->id);
     }
 
     public function create(): View

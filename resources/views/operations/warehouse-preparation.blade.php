@@ -1,5 +1,16 @@
 @extends('layouts.app')
 
+@push('styles')
+<style>
+    .warehouse-item-focused {
+        outline: 2px solid #198754;
+        outline-offset: -2px;
+        transition: box-shadow 0.25s ease;
+        box-shadow: inset 0 0 0 9999px rgba(25, 135, 84, 0.12);
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
@@ -95,7 +106,11 @@
                             </thead>
                             <tbody>
                                 @foreach($order->items as $item)
-                                    <tr class="{{ $item->is_prepared ? 'table-success' : '' }}">
+                                    <tr
+                                        id="warehouse-item-{{ $item->id }}"
+                                        tabindex="-1"
+                                        class="{{ $item->is_prepared ? 'table-success' : '' }}"
+                                    >
                                         <td>{{ $item->product?->name ?? 'Unknown item' }}</td>
                                         <td class="text-end">{{ $item->quantity }}</td>
                                         <td class="text-center">
@@ -142,3 +157,25 @@
     <div class="mt-4">{{ $orders->links() }}</div>
 @endif
 @endsection
+
+@if(session('prepared_item_id'))
+    @push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const preparedRow = document.getElementById('warehouse-item-{{ (int) session('prepared_item_id') }}');
+
+            if (! preparedRow) {
+                return;
+            }
+
+            preparedRow.classList.add('warehouse-item-focused');
+            preparedRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            preparedRow.focus({ preventScroll: true });
+
+            setTimeout(function () {
+                preparedRow.classList.remove('warehouse-item-focused');
+            }, 3000);
+        });
+    </script>
+    @endpush
+@endif

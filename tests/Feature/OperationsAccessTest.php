@@ -158,7 +158,8 @@ it('allows warehouseman to mark an order item as prepared', function () {
 
     $response
         ->assertRedirect()
-        ->assertSessionHas('success', 'Item marked as prepared.');
+        ->assertSessionHas('success', 'All items are already prepared.')
+        ->assertSessionHas('prepared_item_id', $item->id);
 
     $this->assertDatabaseHas('order_items', [
         'id' => $item->id,
