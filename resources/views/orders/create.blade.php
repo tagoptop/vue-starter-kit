@@ -204,13 +204,46 @@
                             <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
                                 <div>
                                     <div class="fw-semibold">Location Pin</div>
-                                    <div class="small text-muted">Optional: use your current location to attach a map marker for delivery.</div>
+                                    <div class="small text-muted">Optional: use device GPS or manually set your desired pin location.</div>
                                 </div>
                                 <button type="button" class="btn btn-outline-primary btn-sm" id="useCurrentLocationBtn">Use Current Location</button>
                             </div>
 
-                            <input type="hidden" name="delivery_latitude" id="delivery_latitude" value="{{ old('delivery_latitude') }}">
-                            <input type="hidden" name="delivery_longitude" id="delivery_longitude" value="{{ old('delivery_longitude') }}">
+                            <div class="row g-2 mb-2">
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label form-label-sm mb-1" for="delivery_latitude">Latitude</label>
+                                    <input
+                                        type="number"
+                                        step="0.0000001"
+                                        min="-90"
+                                        max="90"
+                                        name="delivery_latitude"
+                                        id="delivery_latitude"
+                                        class="form-control form-control-sm"
+                                        placeholder="e.g. 14.599512"
+                                        value="{{ old('delivery_latitude') }}"
+                                    >
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label form-label-sm mb-1" for="delivery_longitude">Longitude</label>
+                                    <input
+                                        type="number"
+                                        step="0.0000001"
+                                        min="-180"
+                                        max="180"
+                                        name="delivery_longitude"
+                                        id="delivery_longitude"
+                                        class="form-control form-control-sm"
+                                        placeholder="e.g. 120.984222"
+                                        value="{{ old('delivery_longitude') }}"
+                                    >
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2 mb-2">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="applyManualPinBtn">Apply Manual Pin</button>
+                                <button type="button" class="btn btn-outline-danger btn-sm" id="clearPinBtn">Clear Pin</button>
+                            </div>
 
                             <div id="locationStatus" class="small text-muted">
                                 @if(old('delivery_latitude') && old('delivery_longitude'))
@@ -311,6 +344,18 @@
         const longitudeInput = document.getElementById('delivery_longitude');
         const locationStatus = document.getElementById('locationStatus');
         const previewMapLink = document.getElementById('previewMapLink');
+        const applyManualPinBtn = document.getElementById('applyManualPinBtn');
+        const clearPinBtn = document.getElementById('clearPinBtn');
+
+        function getCleanCoordinate(value) {
+            if (value === '' || value === null || value === undefined) {
+                return null;
+            }
+
+            const numericValue = Number.parseFloat(value);
+
+            return Number.isFinite(numericValue) ? numericValue.toFixed(7) : null;
+        }
 
         function updateLocationPreview(latitude, longitude) {
             if (latitude && longitude) {
@@ -325,7 +370,34 @@
             previewMapLink.classList.add('d-none');
         }
 
+        function applyManualPin() {
+            const latitude = getCleanCoordinate(latitudeInput.value);
+            const longitude = getCleanCoordinate(longitudeInput.value);
+
+            if (! latitude || ! longitude) {
+                locationStatus.textContent = 'Enter both latitude and longitude to set a manual pin.';
+                previewMapLink.href = '#';
+                previewMapLink.classList.add('d-none');
+                return;
+            }
+
+            latitudeInput.value = latitude;
+            longitudeInput.value = longitude;
+            updateLocationPreview(latitude, longitude);
+        }
+
         updateLocationPreview(latitudeInput.value, longitudeInput.value);
+
+        applyManualPinBtn?.addEventListener('click', applyManualPin);
+
+        clearPinBtn?.addEventListener('click', function () {
+            latitudeInput.value = '';
+            longitudeInput.value = '';
+            updateLocationPreview(null, null);
+        });
+
+        latitudeInput?.addEventListener('change', applyManualPin);
+        longitudeInput?.addEventListener('change', applyManualPin);
 
         locationButton?.addEventListener('click', function () {
             if (! navigator.geolocation) {
