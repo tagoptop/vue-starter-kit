@@ -28,7 +28,7 @@ class UserManagementController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
             'phone' => ['nullable', 'string', 'max:30'],
             'address' => ['nullable', 'string', 'max:255'],
-            'role' => ['required', 'in:admin,staff,driver,customer'],
+            'role' => ['required', 'in:admin,staff,driver,warehouseman,checker,customer'],
         ]);
 
         $user->update($validated);

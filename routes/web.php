@@ -16,7 +16,9 @@ use Illuminate\Support\Facades\Route;
 Route::redirect('/', '/dashboard')->name('home');
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('dashboard', [ConstructionDashboardController::class, 'index'])->name('dashboard');
+    Route::get('dashboard', [ConstructionDashboardController::class, 'index'])
+        ->middleware('role:admin,staff,driver,warehouseman,checker')
+        ->name('dashboard');
     Route::get('assistant/compose', AssistantComposeController::class)->name('assistant.compose');
 
     Route::get('orders', [OrderController::class, 'index'])->name('orders.index');
@@ -35,6 +37,14 @@ Route::middleware(['auth'])->group(function () {
 
     Route::middleware('role:driver')->group(function () {
         Route::get('driver/deliveries', [OrderController::class, 'driverDeliveries'])->name('driver.deliveries.index');
+    });
+
+    Route::middleware('role:warehouseman')->group(function () {
+        Route::get('warehouse/preparation', [OrderController::class, 'warehousePreparation'])->name('warehouse.preparation');
+    });
+
+    Route::middleware('role:checker')->group(function () {
+        Route::get('checker/spot-checks', [OrderController::class, 'checkerSpotChecks'])->name('checker.spot-checks');
     });
 
     Route::middleware('role:admin,staff')->group(function () {

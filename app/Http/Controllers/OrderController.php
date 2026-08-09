@@ -260,6 +260,81 @@ class OrderController extends Controller
         return view('deliveries.driver', compact('deliveries', 'search'));
     }
 
+    public function warehousePreparation(Request $request): View
+    {
+        $search = trim((string) $request->input('search', ''));
+
+        $orders = Order::query()
+            ->with(['customer', 'driver', 'items.product'])
+            ->whereIn('status', ['pending', 'approved'])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($orderQuery) use ($search) {
+                    $orderQuery
+                        ->where('order_number', 'like', "%{$search}%")
+                        ->orWhere('delivery_address', 'like', "%{$search}%")
+                        ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                            $customerQuery->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('items.product', function ($productQuery) use ($search) {
+                            $productQuery->where('name', 'like', "%{$search}%");
+                        });
+                });
+            })
+            ->orderByRaw('scheduled_for is null')
+            ->orderBy('scheduled_for')
+            ->orderByRaw("case status when 'approved' then 1 when 'pending' then 2 else 3 end")
+            ->orderBy('delivery_priority')
+            ->latest('created_at')
+            ->paginate(12)
+            ->withQueryString();
+
+        $summary = [
+            'totalOrders' => $orders->total(),
+            'totalItems' => $orders->getCollection()->sum(fn (Order $order) => $order->items->sum('quantity')),
+            'approvedOrders' => $orders->getCollection()->where('status', 'approved')->count(),
+            'pendingOrders' => $orders->getCollection()->where('status', 'pending')->count(),
+        ];
+
+        return view('operations.warehouse-preparation', compact('orders', 'search', 'summary'));
+    }
+
+    public function checkerSpotChecks(Request $request): View
+    {
+        $search = trim((string) $request->input('search', ''));
+
+        $orders = Order::query()
+            ->with(['customer', 'driver', 'items.product'])
+            ->whereIn('status', ['approved', 'delivered'])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($orderQuery) use ($search) {
+                    $orderQuery
+                        ->where('order_number', 'like', "%{$search}%")
+                        ->orWhere('delivery_address', 'like', "%{$search}%")
+                        ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                            $customerQuery->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('items.product', function ($productQuery) use ($search) {
+                            $productQuery->where('name', 'like', "%{$search}%");
+                        });
+                });
+            })
+            ->orderByRaw('scheduled_for is null')
+            ->orderBy('scheduled_for')
+            ->orderByRaw("case status when 'approved' then 1 when 'delivered' then 2 else 3 end")
+            ->latest('updated_at')
+            ->paginate(12)
+            ->withQueryString();
+
+        $summary = [
+            'totalOrders' => $orders->total(),
+            'withCoordinates' => $orders->getCollection()->filter(fn (Order $order) => $order->delivery_latitude && $order->delivery_longitude)->count(),
+            'approvedOrders' => $orders->getCollection()->where('status', 'approved')->count(),
+            'deliveredOrders' => $orders->getCollection()->where('status', 'delivered')->count(),
+        ];
+
+        return view('operations.checker-spot-checks', compact('orders', 'search', 'summary'));
+    }
+
     public function create(): View
     {
         $products = Product::with(['category', 'supplier'])->orderBy('name')->get();

@@ -23,7 +23,9 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto">
-                <li class="nav-item"><a class="nav-link" href="{{ route('dashboard') }}">Dashboard</a></li>
+                @if(auth()->check() && auth()->user()->role !== 'customer')
+                    <li class="nav-item"><a class="nav-link" href="{{ route('dashboard') }}">Dashboard</a></li>
+                @endif
                 @if(auth()->check() && in_array(auth()->user()->role, ['admin', 'staff']))
                     <li class="nav-item"><a class="nav-link" href="{{ route('products.index') }}">Products</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ route('categories.index') }}">Categories</a></li>
@@ -34,6 +36,12 @@
                 @endif
                 @if(auth()->check() && auth()->user()->role === 'driver')
                     <li class="nav-item"><a class="nav-link" href="{{ route('driver.deliveries.index') }}">My Deliveries</a></li>
+                @endif
+                @if(auth()->check() && auth()->user()->role === 'warehouseman')
+                    <li class="nav-item"><a class="nav-link" href="{{ route('warehouse.preparation') }}">Warehouse Preparation</a></li>
+                @endif
+                @if(auth()->check() && auth()->user()->role === 'checker')
+                    <li class="nav-item"><a class="nav-link" href="{{ route('checker.spot-checks') }}">Checker Spot Checks</a></li>
                 @endif
                 @if(auth()->check())
                     <li class="nav-item"><a class="nav-link" href="{{ route('conversations.index') }}">Messages</a></li>

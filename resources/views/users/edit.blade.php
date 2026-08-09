@@ -26,6 +26,8 @@
                         <option value="admin" @selected(old('role', $user->role) === 'admin')>Admin</option>
                         <option value="staff" @selected(old('role', $user->role) === 'staff')>Staff</option>
                         <option value="driver" @selected(old('role', $user->role) === 'driver')>Driver</option>
+                        <option value="warehouseman" @selected(old('role', $user->role) === 'warehouseman')>Warehouseman</option>
+                        <option value="checker" @selected(old('role', $user->role) === 'checker')>Checker</option>
                         <option value="customer" @selected(old('role', $user->role) === 'customer')>Customer</option>
                     </select>
                 </div>
