@@ -74,6 +74,14 @@
                 @endfor
 
                 <tr>
+                    <td colspan="4" class="text-end fw-bold">SUBTOTAL</td>
+                    <td class="text-end fw-bold">{{ number_format((float) ($order->subtotal_amount ?? $order->total_amount), 2) }}</td>
+                </tr>
+                <tr>
+                    <td colspan="4" class="text-end fw-bold">DISCOUNT</td>
+                    <td class="text-end fw-bold">{{ number_format((float) ($order->discount_amount ?? 0), 2) }}</td>
+                </tr>
+                <tr>
                     <td colspan="4" class="text-end fw-bold">TOTAL</td>
                     <td class="text-end fw-bold">{{ number_format((float) $order->total_amount, 2) }}</td>
                 </tr>

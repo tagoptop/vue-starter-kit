@@ -183,6 +183,7 @@ class OrderController extends Controller
             'cart' => $cart,
             'cartCount' => collect($cart)->sum('quantity'),
             'cartTotal' => collect($cart)->sum(fn ($item) => $item['quantity'] * $item['price']),
+            'cartSubtotal' => collect($cart)->sum(fn ($item) => $item['quantity'] * $item['price']),
         ]);
     }
 
@@ -198,6 +199,7 @@ class OrderController extends Controller
             'payment_other_method' => ['nullable', 'string', 'max:80', 'required_if:payment_method,other'],
             'payment_reference' => ['nullable', 'string', 'max:120'],
             'payment_notes' => ['nullable', 'string'],
+            'discount_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $cart = $this->getCart();
@@ -225,7 +227,7 @@ class OrderController extends Controller
                     'notes' => $validated['notes'] ?? null,
                 ]);
 
-                $total = 0;
+                $subtotalAmount = 0;
 
                 foreach ($cart as $item) {
                     $product = Product::lockForUpdate()->findOrFail($item['product_id']);
@@ -238,7 +240,7 @@ class OrderController extends Controller
                     }
 
                     $subtotal = $quantity * (float) $product->price;
-                    $total += $subtotal;
+                    $subtotalAmount += $subtotal;
 
                     OrderItem::create([
                         'order_id' => $order->id,
@@ -260,7 +262,19 @@ class OrderController extends Controller
                     ]);
                 }
 
-                $order->update(['total_amount' => $total]);
+                $discountAmount = (float) ($validated['discount_amount'] ?? 0);
+
+                if ($discountAmount > $subtotalAmount) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'discount_amount' => 'Discount cannot be greater than the cart subtotal.',
+                    ]);
+                }
+
+                $order->update([
+                    'subtotal_amount' => $subtotalAmount,
+                    'discount_amount' => $discountAmount,
+                    'total_amount' => $subtotalAmount - $discountAmount,
+                ]);
             });
         } catch (\Illuminate\Validation\ValidationException $exception) {
             throw $exception;

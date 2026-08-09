@@ -55,6 +55,8 @@
         @if($order->payment_notes)
             <p class="mb-1"><strong>Payment Notes:</strong> {{ $order->payment_notes }}</p>
         @endif
+        <p class="mb-1"><strong>Subtotal:</strong> ₱{{ number_format((float) ($order->subtotal_amount ?? $order->total_amount), 2) }}</p>
+        <p class="mb-1"><strong>Discount:</strong> ₱{{ number_format((float) ($order->discount_amount ?? 0), 2) }}</p>
         <p class="mb-1"><strong>Total:</strong> ₱{{ number_format($order->total_amount, 2) }}</p>
         <p class="mb-1"><strong>Customer Notes:</strong> {{ $order->notes ?: 'No customer notes provided.' }}</p>
         @if($order->proof_of_delivery_path)

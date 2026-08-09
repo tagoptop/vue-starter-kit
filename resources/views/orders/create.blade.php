@@ -180,9 +180,17 @@
                             <span>Items</span>
                             <strong>{{ $cartCount }}</strong>
                         </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Subtotal</span>
+                            <strong>₱{{ number_format($cartSubtotal, 2) }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Discount</span>
+                            <strong id="discountPreview">₱0.00</strong>
+                        </div>
                         <div class="d-flex justify-content-between">
                             <span>Total</span>
-                            <strong class="text-success fs-5">₱{{ number_format($cartTotal, 2) }}</strong>
+                            <strong class="text-success fs-5" id="finalTotalPreview">₱{{ number_format($cartSubtotal, 2) }}</strong>
                         </div>
                     </div>
 
@@ -317,6 +325,22 @@
                         </div>
 
                         <div class="mb-3">
+                            <label class="form-label" for="discount_amount">Discount Amount (optional)</label>
+                            <input
+                                type="number"
+                                id="discount_amount"
+                                name="discount_amount"
+                                class="form-control"
+                                value="{{ old('discount_amount', 0) }}"
+                                min="0"
+                                step="0.01"
+                                max="{{ number_format((float) $cartSubtotal, 2, '.', '') }}"
+                                placeholder="Enter discount amount"
+                            >
+                            <div class="form-text">Discount cannot be greater than the cart subtotal.</div>
+                        </div>
+
+                        <div class="mb-3">
                             <label class="form-label" for="payment_notes">Payment Notes (optional)</label>
                             <textarea id="payment_notes" name="payment_notes" class="form-control" rows="2" placeholder="Any remarks for this transaction">{{ old('payment_notes') }}</textarea>
                         </div>
@@ -346,6 +370,10 @@
         const previewMapLink = document.getElementById('previewMapLink');
         const applyManualPinBtn = document.getElementById('applyManualPinBtn');
         const clearPinBtn = document.getElementById('clearPinBtn');
+        const discountInput = document.getElementById('discount_amount');
+        const discountPreview = document.getElementById('discountPreview');
+        const finalTotalPreview = document.getElementById('finalTotalPreview');
+        const subtotalAmount = {{ number_format((float) $cartSubtotal, 2, '.', '') }};
 
         function getCleanCoordinate(value) {
             if (value === '' || value === null || value === undefined) {
@@ -386,7 +414,28 @@
             updateLocationPreview(latitude, longitude);
         }
 
+        function updateDiscountPreview() {
+            if (! discountInput || ! discountPreview || ! finalTotalPreview) {
+                return;
+            }
+
+            const parsedDiscount = Number.parseFloat(discountInput.value || '0');
+            const discount = Number.isFinite(parsedDiscount)
+                ? Math.max(0, Math.min(parsedDiscount, subtotalAmount))
+                : 0;
+
+            if (parsedDiscount !== discount) {
+                discountInput.value = discount.toFixed(2);
+            }
+
+            const finalTotal = subtotalAmount - discount;
+
+            discountPreview.textContent = `₱${discount.toFixed(2)}`;
+            finalTotalPreview.textContent = `₱${finalTotal.toFixed(2)}`;
+        }
+
         updateLocationPreview(latitudeInput.value, longitudeInput.value);
+        updateDiscountPreview();
 
         applyManualPinBtn?.addEventListener('click', applyManualPin);
 
@@ -398,6 +447,8 @@
 
         latitudeInput?.addEventListener('change', applyManualPin);
         longitudeInput?.addEventListener('change', applyManualPin);
+        discountInput?.addEventListener('input', updateDiscountPreview);
+        discountInput?.addEventListener('change', updateDiscountPreview);
 
         locationButton?.addEventListener('click', function () {
             if (! navigator.geolocation) {

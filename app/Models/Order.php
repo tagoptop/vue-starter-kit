@@ -24,6 +24,8 @@ class Order extends Model
         'paid_amount',
         'paid_at',
         'payment_notes',
+        'subtotal_amount',
+        'discount_amount',
         'total_amount',
         'delivery_address',
         'delivery_latitude',
@@ -46,6 +48,8 @@ class Order extends Model
             'paid_amount' => 'float',
             'paid_at' => 'datetime',
             'scheduled_for' => 'date',
+            'subtotal_amount' => 'float',
+            'discount_amount' => 'float',
             'total_amount' => 'float',
             'delivered_at' => 'datetime',
         ];
