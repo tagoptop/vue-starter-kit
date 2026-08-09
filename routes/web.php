@@ -43,6 +43,7 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('suppliers', SupplierController::class)->except(['show']);
         Route::get('inventory', [InventoryController::class, 'index'])->name('inventory.index');
         Route::get('deliveries', [OrderController::class, 'deliveryMonitoring'])->name('deliveries.index');
+        Route::get('deliveries/weekly', [OrderController::class, 'weeklySchedule'])->name('deliveries.weekly');
         Route::post('inventory/stock-in', [InventoryController::class, 'stockIn'])->name('inventory.stock-in');
         Route::post('inventory/stock-out', [InventoryController::class, 'stockOut'])->name('inventory.stock-out');
         Route::patch('deliveries/reorder', [OrderController::class, 'reorderDeliveries'])->name('deliveries.reorder');

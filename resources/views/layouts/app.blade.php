@@ -30,6 +30,7 @@
                     <li class="nav-item"><a class="nav-link" href="{{ route('suppliers.index') }}">Suppliers</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ route('inventory.index') }}">Inventory</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ route('deliveries.index') }}">Deliveries</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ route('deliveries.weekly') }}">Weekly Delivery Schedule</a></li>
                 @endif
                 @if(auth()->check() && auth()->user()->role === 'driver')
                     <li class="nav-item"><a class="nav-link" href="{{ route('driver.deliveries.index') }}">My Deliveries</a></li>

@@ -6,7 +6,10 @@
         <h4 class="mb-1">Delivery Monitoring</h4>
         <p class="text-muted mb-0">Track outgoing orders, open delivery locations, and update delivery status or notes.</p>
     </div>
-    <a href="{{ route('orders.index') }}" class="btn btn-outline-secondary">View All Orders</a>
+    <div class="d-flex gap-2">
+        <a href="{{ route('deliveries.weekly') }}" class="btn btn-primary">Weekly Schedule</a>
+        <a href="{{ route('orders.index') }}" class="btn btn-outline-secondary">View All Orders</a>
+    </div>
 </div>
 
 <div class="row g-3 mb-4">

@@ -128,6 +128,93 @@ class OrderController extends Controller
         return view('deliveries.index', compact('orders', 'status', 'search', 'summary', 'calendarEvents', 'customerLocations', 'drivers'));
     }
 
+    public function weeklySchedule(Request $request): View
+    {
+        $requestedWeekStart = $request->input('week_start');
+
+        $weekStart = $requestedWeekStart
+            ? Carbon::parse($requestedWeekStart)->startOfWeek(Carbon::MONDAY)
+            : now()->startOfWeek(Carbon::MONDAY);
+
+        $weekEnd = $weekStart->copy()->endOfWeek(Carbon::SUNDAY);
+
+        $scheduledOrders = Order::query()
+            ->with(['customer', 'driver', 'items.product'])
+            ->whereBetween('scheduled_for', [$weekStart->toDateString(), $weekEnd->toDateString()])
+            ->orderBy('scheduled_for')
+            ->orderByRaw("case status when 'pending' then 1 when 'approved' then 2 when 'delivered' then 3 else 4 end")
+            ->orderBy('delivery_priority')
+            ->orderBy('created_at')
+            ->get();
+
+        $unscheduledOrders = Order::query()
+            ->with(['customer', 'driver', 'items.product'])
+            ->whereIn('status', ['pending', 'approved'])
+            ->whereNull('scheduled_for')
+            ->orderByRaw("case status when 'pending' then 1 when 'approved' then 2 else 3 end")
+            ->orderBy('delivery_priority')
+            ->latest('created_at')
+            ->get();
+
+        $days = collect(range(0, 6))
+            ->map(fn (int $offset) => $weekStart->copy()->addDays($offset));
+
+        $dailySchedules = $days->map(function (Carbon $day) use ($scheduledOrders): array {
+            $ordersForDay = $scheduledOrders
+                ->filter(fn (Order $order) => $order->scheduled_for?->isSameDay($day))
+                ->values();
+
+            return [
+                'date' => $day,
+                'orders' => $ordersForDay,
+                'totalOrders' => $ordersForDay->count(),
+                'totalItems' => $ordersForDay->sum(fn (Order $order) => $order->items->sum('quantity')),
+            ];
+        });
+
+        $driverWorkloads = $scheduledOrders
+            ->groupBy(function (Order $order): string {
+                return $order->driver?->name
+                    ?? $order->driver_name
+                    ?? 'Unassigned';
+            })
+            ->map(function ($orders, string $driverName): array {
+                $normalizedOrders = collect($orders);
+
+                return [
+                    'driver' => $driverName,
+                    'orders' => $normalizedOrders->count(),
+                    'items' => $normalizedOrders->sum(fn (Order $order) => $order->items->sum('quantity')),
+                    'amount' => $normalizedOrders->sum('total_amount'),
+                ];
+            })
+            ->sortByDesc('orders')
+            ->values();
+
+        $summary = [
+            'totalOrders' => $scheduledOrders->count(),
+            'totalItems' => $scheduledOrders->sum(fn (Order $order) => $order->items->sum('quantity')),
+            'assignedDrivers' => $scheduledOrders
+                ->filter(fn (Order $order) => $order->driver_id || $order->driver_name)
+                ->count(),
+            'deliveredOrders' => $scheduledOrders->where('status', 'delivered')->count(),
+        ];
+
+        $previousWeekStart = $weekStart->copy()->subWeek()->toDateString();
+        $nextWeekStart = $weekStart->copy()->addWeek()->toDateString();
+
+        return view('deliveries.weekly', compact(
+            'weekStart',
+            'weekEnd',
+            'dailySchedules',
+            'driverWorkloads',
+            'unscheduledOrders',
+            'summary',
+            'previousWeekStart',
+            'nextWeekStart'
+        ));
+    }
+
     public function index(Request $request): View|RedirectResponse
     {
         if ($request->user()->role === 'driver') {
