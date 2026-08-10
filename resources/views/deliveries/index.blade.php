@@ -497,6 +497,30 @@
             border-color: #15803d;
         }
 
+        #deliveryCalendar .fc-daygrid-event {
+            white-space: normal;
+        }
+
+        #deliveryCalendar .delivery-calendar-event {
+            display: grid;
+            gap: 0.1rem;
+            line-height: 1.2;
+        }
+
+        #deliveryCalendar .delivery-calendar-event-customer {
+            font-weight: 700;
+        }
+
+        #deliveryCalendar .delivery-calendar-event-address {
+            font-size: 0.72rem;
+            opacity: 0.95;
+        }
+
+        #deliveryCalendar .delivery-calendar-event-order {
+            font-size: 0.78rem;
+            opacity: 0.92;
+        }
+
         .delivery-board {
             display: grid;
             grid-template-columns: repeat(3, minmax(260px, 1fr));
@@ -619,21 +643,87 @@
             }
 
             const events = @json($calendarEvents);
+            const csrfToken = @json(csrf_token());
+            const updateTemplate = @json(route('orders.update-status', '__ORDER__'));
+            const escapeHtml = (value) => String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+
+            const persistCalendarDate = async (event) => {
+                const formData = new FormData();
+                formData.append('_method', 'PATCH');
+                formData.append('status', event.extendedProps.status || 'pending');
+                formData.append('scheduled_for', event.startStr || '');
+
+                const response = await fetch(updateTemplate.replace('__ORDER__', event.id), {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken || '',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    },
+                    body: formData,
+                });
+
+                return response.ok;
+            };
+
             const calendar = new FullCalendar.Calendar(calendarElement, {
                 initialView: 'dayGridMonth',
                 height: 'auto',
                 events,
                 eventDisplay: 'block',
                 dayMaxEvents: true,
+                editable: true,
+                eventDurationEditable: false,
+                eventStartEditable: true,
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
                     right: 'dayGridMonth,timeGridWeek,listWeek',
                 },
+                eventContent(info) {
+                    if (info.view.type !== 'dayGridMonth') {
+                        return;
+                    }
+
+                    const customerName = info.event.extendedProps.customerName || 'Unknown customer';
+                    const address = info.event.extendedProps.address || 'Not provided';
+
+                    return {
+                        html: `<div class="delivery-calendar-event">`
+                            + `<div class="delivery-calendar-event-customer">${escapeHtml(customerName)}</div>`
+                            + `<div class="delivery-calendar-event-address">${escapeHtml(address)}</div>`
+                            + `<div class="delivery-calendar-event-order">Order #: ${escapeHtml(info.event.title)}</div>`
+                            + `</div>`,
+                    };
+                },
+                async eventDrop(info) {
+                    const saved = await persistCalendarDate(info.event);
+
+                    if (!saved) {
+                        info.revert();
+                        return;
+                    }
+
+                    info.event.setExtendedProp(
+                        'scheduledFor',
+                        info.event.start ? info.event.start.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: '2-digit',
+                            year: 'numeric',
+                        }) : 'Not scheduled'
+                    );
+                },
                 eventDidMount(info) {
                     const total = info.event.extendedProps.total;
                     const status = info.event.extendedProps.status;
-                    info.el.title = `${info.event.title}\nStatus: ${status}\nTotal: PHP ${total}`;
+                    const customerName = info.event.extendedProps.customerName || 'Unknown customer';
+                    const address = info.event.extendedProps.address || 'Not provided';
+                    info.el.title = `${customerName}\n${address}\nOrder #: ${info.event.title}\nStatus: ${status}\nTotal: PHP ${total}`;
                 },
             });
 
@@ -644,8 +734,6 @@
                 return;
             }
 
-            const csrfToken = @json(csrf_token());
-            const updateTemplate = @json(route('orders.update-status', '__ORDER__'));
             const reorderUrl = @json(route('deliveries.reorder'));
             const alertElement = document.getElementById('deliveryBoardAlert');
             let draggedCard = null;

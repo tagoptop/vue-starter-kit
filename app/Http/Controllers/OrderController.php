@@ -71,12 +71,14 @@ class OrderController extends Controller
 
                 return [
                     'id' => (string) $order->id,
-                    'title' => $order->order_number . ' - ' . ($order->customer?->name ?? 'Unknown customer'),
+                    'title' => $order->order_number,
                     'start' => $scheduleDate,
                     'url' => route('orders.show', $order),
                     'extendedProps' => [
                         'status' => $order->status,
                         'total' => number_format((float) $order->total_amount, 2),
+                        'customerName' => $order->customer?->name ?? 'Unknown customer',
+                        'address' => $order->delivery_address ?: 'Not provided',
                     ],
                     'classNames' => ['delivery-status-' . $order->status],
                 ];
