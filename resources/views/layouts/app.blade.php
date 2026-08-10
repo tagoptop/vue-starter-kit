@@ -9,9 +9,12 @@
     @stack('styles')
 </head>
 <body class="bg-light">
+@php
+    $currentUser = auth()->user();
+@endphp
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
-        <a class="navbar-brand d-flex align-items-center gap-2" href="{{ route('dashboard') }}">
+        <a class="navbar-brand d-flex align-items-center gap-2" href="{{ $currentUser ? route($currentUser->homeRouteName()) : route('home') }}">
             @php
                 $brandingLogoUrl = \App\Support\BrandingHelper::getVersionedLogoUrl();
             @endphp
@@ -23,10 +26,10 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto">
-                @if(auth()->check() && auth()->user()->role !== 'customer')
+                @if($currentUser && $currentUser->role !== 'customer')
                     <li class="nav-item"><a class="nav-link" href="{{ route('dashboard') }}">Dashboard</a></li>
                 @endif
-                @if(auth()->check() && in_array(auth()->user()->role, ['admin', 'staff']))
+                @if($currentUser && $currentUser->hasAnyRole(['admin', 'staff']))
                     <li class="nav-item"><a class="nav-link" href="{{ route('products.index') }}">Products</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ route('categories.index') }}">Categories</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ route('suppliers.index') }}">Suppliers</a></li>
@@ -34,20 +37,20 @@
                     <li class="nav-item"><a class="nav-link" href="{{ route('deliveries.index') }}">Deliveries</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ route('deliveries.weekly') }}">Weekly Delivery Schedule</a></li>
                 @endif
-                @if(auth()->check() && auth()->user()->role === 'driver')
+                @if($currentUser && $currentUser->hasRole('driver'))
                     <li class="nav-item"><a class="nav-link" href="{{ route('driver.deliveries.index') }}">My Deliveries</a></li>
                 @endif
-                @if(auth()->check() && auth()->user()->role === 'warehouseman')
+                @if($currentUser && $currentUser->hasRole('warehouseman'))
                     <li class="nav-item"><a class="nav-link" href="{{ route('warehouse.preparation') }}">Warehouse Preparation</a></li>
                 @endif
-                @if(auth()->check() && auth()->user()->role === 'checker')
+                @if($currentUser && $currentUser->hasRole('checker'))
                     <li class="nav-item"><a class="nav-link" href="{{ route('checker.spot-checks') }}">Checker Spot Checks</a></li>
                 @endif
-                @if(auth()->check())
+                @if($currentUser)
                     <li class="nav-item"><a class="nav-link" href="{{ route('conversations.index') }}">Messages</a></li>
                 @endif
                 <li class="nav-item"><a class="nav-link" href="{{ route('orders.index') }}">Orders</a></li>
-                @if(auth()->check() && auth()->user()->role === 'customer')
+                @if($currentUser && $currentUser->hasRole('customer'))
                     <li class="nav-item">
                         <a class="nav-link" href="{{ route('orders.create') }}">
                             Order Now
@@ -57,18 +60,18 @@
                         </a>
                     </li>
                 @endif
-                @if(auth()->check() && in_array(auth()->user()->role, ['admin', 'staff']))
+                @if($currentUser && $currentUser->hasAnyRole(['admin', 'staff']))
                     <li class="nav-item"><a class="nav-link" href="{{ route('reports.index') }}">Reports</a></li>
                 @endif
-                @if(auth()->check() && auth()->user()->role === 'admin')
+                @if($currentUser && $currentUser->hasRole('admin'))
                     <li class="nav-item"><a class="nav-link" href="{{ route('users.index') }}">Users</a></li>
                 @endif
-                @if(auth()->check())
+                @if($currentUser)
                     <li class="nav-item"><a class="nav-link" href="{{ route('settings.profile') }}">Settings</a></li>
                 @endif
             </ul>
             <div class="d-flex align-items-center gap-2">
-                <span class="text-white small">{{ auth()->user()->name ?? '' }} ({{ auth()->user()->role ?? '' }})</span>
+                <span class="text-white small">{{ $currentUser->name ?? '' }} ({{ $currentUser->role ?? '' }})</span>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button class="btn btn-sm btn-outline-light" type="submit">Logout</button>
