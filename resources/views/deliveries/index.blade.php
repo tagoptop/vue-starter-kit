@@ -839,11 +839,7 @@
                     );
                 },
                 eventDidMount(info) {
-                    const total = info.event.extendedProps.total;
-                    const status = info.event.extendedProps.status;
-                    const customerName = info.event.extendedProps.customerName || 'Unknown customer';
-                    const address = info.event.extendedProps.address || 'Not provided';
-                    info.el.title = `${customerName}\n${address}\nOrder #: ${info.event.title}\nStatus: ${status}\nTotal: PHP ${total}`;
+                    info.el.removeAttribute('title');
 
                     const hoverCard = document.createElement('div');
                     hoverCard.className = 'delivery-calendar-hover-card d-none';
