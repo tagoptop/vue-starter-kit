@@ -521,6 +521,64 @@
             opacity: 0.92;
         }
 
+        .delivery-calendar-hover-card {
+            position: fixed;
+            z-index: 1200;
+            width: min(320px, calc(100vw - 1.5rem));
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.65rem;
+            box-shadow: 0 18px 42px rgba(15, 23, 42, 0.2);
+            padding: 0.65rem;
+            pointer-events: none;
+        }
+
+        .delivery-calendar-hover-title {
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 0.35rem;
+            font-size: 0.86rem;
+        }
+
+        .delivery-calendar-hover-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            display: grid;
+            gap: 0.3rem;
+        }
+
+        .delivery-calendar-hover-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: #1f2937;
+        }
+
+        .delivery-calendar-hover-item {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .delivery-calendar-hover-price {
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .delivery-calendar-hover-total {
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.84rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
         .delivery-board {
             display: grid;
             grid-template-columns: repeat(3, minmax(260px, 1fr));
@@ -651,6 +709,68 @@
                 .replace(/>/g, '&gt;')
                 .replace(/\"/g, '&quot;')
                 .replace(/'/g, '&#39;');
+            const currencyFormatter = new Intl.NumberFormat('en-PH', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            });
+
+            const toNumber = (value) => {
+                if (typeof value === 'number') {
+                    return Number.isFinite(value) ? value : 0;
+                }
+
+                const normalized = String(value ?? '').replace(/,/g, '').trim();
+                const parsed = Number(normalized);
+                return Number.isFinite(parsed) ? parsed : 0;
+            };
+
+            const formatCurrency = (value) => `PHP ${currencyFormatter.format(toNumber(value))}`;
+
+            const buildHoverCardHtml = (event) => {
+                const items = Array.isArray(event.extendedProps.items) ? event.extendedProps.items : [];
+
+                if (!items.length) {
+                    return `<div class="delivery-calendar-hover-title">Order Items</div>`
+                        + `<div class="small text-muted">No item details available.</div>`
+                        + `<div class="delivery-calendar-hover-total"><span>Total</span><span>${escapeHtml(formatCurrency(event.extendedProps.total))}</span></div>`;
+                }
+
+                const listHtml = items.map((item) => {
+                    const quantity = Number(item.quantity) || 0;
+                    const name = item.name || 'Item';
+                    const subtotal = formatCurrency(item.subtotal);
+
+                    return `<li class="delivery-calendar-hover-row">`
+                        + `<span class="delivery-calendar-hover-item">${escapeHtml(name)} x${escapeHtml(quantity)}</span>`
+                        + `<span class="delivery-calendar-hover-price">${escapeHtml(subtotal)}</span>`
+                        + `</li>`;
+                }).join('');
+
+                const totalLabel = formatCurrency(event.extendedProps.total);
+
+                return `<div class="delivery-calendar-hover-title">Order Items</div>`
+                    + `<ul class="delivery-calendar-hover-list">${listHtml}</ul>`
+                    + `<div class="delivery-calendar-hover-total"><span>Total</span><span>${escapeHtml(totalLabel)}</span></div>`;
+            };
+
+            const positionHoverCard = (card, anchorRect) => {
+                const gap = 10;
+                const maxLeft = window.innerWidth - card.offsetWidth - gap;
+                const maxTop = window.innerHeight - card.offsetHeight - gap;
+
+                let left = anchorRect.right + gap;
+                if (left > maxLeft) {
+                    left = Math.max(gap, anchorRect.left - card.offsetWidth - gap);
+                }
+
+                let top = anchorRect.top;
+                if (top > maxTop) {
+                    top = Math.max(gap, maxTop);
+                }
+
+                card.style.left = `${left}px`;
+                card.style.top = `${Math.max(gap, top)}px`;
+            };
 
             const persistCalendarDate = async (event) => {
                 const formData = new FormData();
@@ -724,6 +844,50 @@
                     const customerName = info.event.extendedProps.customerName || 'Unknown customer';
                     const address = info.event.extendedProps.address || 'Not provided';
                     info.el.title = `${customerName}\n${address}\nOrder #: ${info.event.title}\nStatus: ${status}\nTotal: PHP ${total}`;
+
+                    const hoverCard = document.createElement('div');
+                    hoverCard.className = 'delivery-calendar-hover-card d-none';
+                    hoverCard.innerHTML = buildHoverCardHtml(info.event);
+                    document.body.appendChild(hoverCard);
+
+                    const showHoverCard = () => {
+                        hoverCard.classList.remove('d-none');
+                        positionHoverCard(hoverCard, info.el.getBoundingClientRect());
+                    };
+
+                    const hideHoverCard = () => {
+                        hoverCard.classList.add('d-none');
+                    };
+
+                    const updateHoverCardPosition = () => {
+                        if (!hoverCard.classList.contains('d-none')) {
+                            positionHoverCard(hoverCard, info.el.getBoundingClientRect());
+                        }
+                    };
+
+                    info.el.addEventListener('mouseenter', showHoverCard);
+                    info.el.addEventListener('mouseleave', hideHoverCard);
+                    window.addEventListener('scroll', updateHoverCardPosition, true);
+                    window.addEventListener('resize', updateHoverCardPosition);
+
+                    info.event.setExtendedProp('_hoverCardHandlers', {
+                        hoverCard,
+                        showHoverCard,
+                        hideHoverCard,
+                        updateHoverCardPosition,
+                    });
+                },
+                eventWillUnmount(info) {
+                    const handlers = info.event.extendedProps._hoverCardHandlers;
+                    if (!handlers) {
+                        return;
+                    }
+
+                    info.el.removeEventListener('mouseenter', handlers.showHoverCard);
+                    info.el.removeEventListener('mouseleave', handlers.hideHoverCard);
+                    window.removeEventListener('scroll', handlers.updateHoverCardPosition, true);
+                    window.removeEventListener('resize', handlers.updateHoverCardPosition);
+                    handlers.hoverCard?.remove();
                 },
             });
 

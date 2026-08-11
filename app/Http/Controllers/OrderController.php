@@ -56,7 +56,7 @@ class OrderController extends Controller
             ->withQueryString();
 
         $calendarEvents = (clone $baseQuery)
-            ->with('customer')
+            ->with(['customer', 'items.product'])
             ->when(in_array($status, ['pending', 'approved', 'delivered'], true), function ($query) use ($status) {
                 $query->where('status', $status);
             })
@@ -79,6 +79,14 @@ class OrderController extends Controller
                         'total' => number_format((float) $order->total_amount, 2),
                         'customerName' => $order->customer?->name ?? 'Unknown customer',
                         'address' => $order->delivery_address ?: 'Not provided',
+                        'items' => $order->items->map(function ($item): array {
+                            return [
+                                'name' => $item->product?->name ?? 'Item',
+                                'quantity' => (int) $item->quantity,
+                                'unitPrice' => number_format((float) $item->unit_price, 2),
+                                'subtotal' => number_format((float) $item->subtotal, 2),
+                            ];
+                        })->values()->all(),
                     ],
                     'classNames' => ['delivery-status-' . $order->status],
                 ];
